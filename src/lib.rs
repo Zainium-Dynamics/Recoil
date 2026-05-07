@@ -24,8 +24,8 @@ along with this program.  If not, see <https://gnu.org>.
 //! ## Module layout
 //!
 //! - `cli`       — Clap derive CLI (all nine subcommands)
-//! - `config`    — Encrypted TOML configuration persistence
-//! - `security`  — Argon2id key derivation, AES-256-GCM vault, rate limiter
+//! - `config`    — Encrypted JSON configuration persistence
+//! - `security`  — PBKDF2-HMAC-SHA512 key derivation, AES-256-GCM vault, rate limiter
 //! - `utils`     — OS detection, filesystem detection, logging, constants
 //!
 //! Phases 2–7 will add:

@@ -1,0 +1,52 @@
+[package]
+name        = "recoil"
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["Ali <alizain.arch@gmail.com>"]
+description = "Immutable system safety net and chronology engine for Linux"
+license     = "GPL-3.0-or-later"
+repository  = "https://github.com/alizainx/recoil"
+keywords    = ["linux", "safety", "recovery", "security", "filesystem"]
+categories  = ["command-line-utilities", "os"]
+
+[[bin]]
+name = "recoil"
+path = "src/main.rs"
+
+[dependencies]
+clap      = { version = "=4.3.24", features = ["derive", "env", "color", "wrap_help"] }
+console   = "=0.15.8"
+indicatif = "=0.17.8"
+rpassword = "=7.2.0"
+
+tokio = { version = "=1.35.1", features = ["rt-multi-thread", "macros"] }
+
+pbkdf2  = { version = "=0.12.2", default-features = false }
+sha2    = { version = "=0.10.8", default-features = false, features = ["std"] }
+hmac    = { version = "=0.12.1", default-features = false }
+aes-gcm = { version = "=0.10.3", features = ["std"] }
+rand    = { version = "=0.8.5",  features = ["getrandom"] }
+zeroize = { version = "=1.7.0",  features = ["derive"] }
+
+serde      = { version = "=1.0.197", features = ["derive"] }
+serde_json = "=1.0.114"
+
+nix  = { version = "=0.27.1", features = ["fs", "user", "process"] }
+libc = "=0.2.153"
+dirs = "=5.0.1"
+
+chrono = { version = "=0.4.34", features = ["serde"] }
+
+thiserror          = "=1.0.57"
+tracing            = "=0.1.40"
+tracing-subscriber = { version = "=0.3.18", features = ["env-filter", "fmt", "ansi"] }
+
+[dev-dependencies]
+tempfile = "=3.10.1"
+
+[profile.release]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+strip         = true
+panic         = "abort"

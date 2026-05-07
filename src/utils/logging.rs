@@ -25,8 +25,7 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 /// Production default is "warn" — users see nothing unless something
 /// actually needs their attention.
 pub fn init() {
-    let filter = EnvFilter::try_from_env("RECOIL_LOG")
-        .unwrap_or_else(|_| EnvFilter::new("warn"));
+    let filter = EnvFilter::try_from_env("RECOIL_LOG").unwrap_or_else(|_| EnvFilter::new("warn"));
 
     tracing_subscriber::registry()
         .with(

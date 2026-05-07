@@ -47,7 +47,7 @@ pub async fn status(args: StatusArgs) -> Result<()> {
         return Ok(());
     }
 
-    let pw  = get_password(args.password)?;
+    let pw = get_password(args.password)?;
     let cfg = mgr.load(&pw)?;
 
     println!(
@@ -59,18 +59,21 @@ pub async fn status(args: StatusArgs) -> Result<()> {
     );
 
     info_row("Distribution", &cfg.distro.display_name());
-    info_row("Filesystem",   cfg.filesystem.display_name());
-    info_row("Shadow dir",   &cfg.shadow_dir.display().to_string());
-    info_row("Link strategy",&cfg.link_strategy.to_string());
-    info_row("Created",      &cfg.created_at.format("%Y-%m-%d %H:%M UTC").to_string());
+    info_row("Filesystem", cfg.filesystem.display_name());
+    info_row("Shadow dir", &cfg.shadow_dir.display().to_string());
+    info_row("Link strategy", &cfg.link_strategy.to_string());
+    info_row(
+        "Created",
+        &cfg.created_at.format("%Y-%m-%d %H:%M UTC").to_string(),
+    );
 
     println!("\n  Phase completion:");
-    phase_row("Phase 1 — Foundation",          cfg.phase1_complete);
-    phase_row("Phase 2 — Shadow layer",         cfg.phase2_complete);
-    phase_row("Phase 3 — Vault + audit log",    cfg.phase3_complete);
-    phase_row("Phase 4 — Interceptor",          cfg.phase4_complete);
-    phase_row("Phase 5 — Vaultion + daemon",    cfg.phase5_complete);
-    phase_row("Phase 6 — eBPF + packaging",     cfg.phase6_complete);
+    phase_row("Phase 1 — Foundation", cfg.phase1_complete);
+    phase_row("Phase 2 — Shadow layer", cfg.phase2_complete);
+    phase_row("Phase 3 — Vault + audit log", cfg.phase3_complete);
+    phase_row("Phase 4 — Interceptor", cfg.phase4_complete);
+    phase_row("Phase 5 — Vaultion + daemon", cfg.phase5_complete);
+    phase_row("Phase 6 — eBPF + packaging", cfg.phase6_complete);
     phase_row("Phase 7 — Validation + release", cfg.phase7_complete);
     println!();
 
@@ -111,8 +114,11 @@ pub struct RestoreArgs {
 }
 
 pub async fn restore(_args: RestoreArgs) -> Result<()> {
-    not_implemented("restore", 5,
-        "Recovery engine — vault decryption and root-mirror restoration")
+    not_implemented(
+        "restore",
+        5,
+        "Recovery engine — vault decryption and root-mirror restoration",
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -142,8 +148,11 @@ pub struct HistoryArgs {
 }
 
 pub async fn history(_args: HistoryArgs) -> Result<()> {
-    not_implemented("history", 4,
-        "SQLite chronology database — implemented in Phase 4")
+    not_implemented(
+        "history",
+        4,
+        "SQLite chronology database — implemented in Phase 4",
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -161,7 +170,11 @@ pub enum VaultSubcmd {
     /// Encrypt a file into the Vaultion vault.
     Encrypt { file: String },
     /// Decrypt and restore a .rvb file.
-    Decrypt { file: String, #[arg(long)] output: Option<String> },
+    Decrypt {
+        file: String,
+        #[arg(long)]
+        output: Option<String>,
+    },
     /// Decrypt to RAM and open — temp file wiped after viewing.
     View { file: String },
     /// Securely delete a .rvb file (3-pass overwrite).
@@ -169,7 +182,10 @@ pub enum VaultSubcmd {
     /// List all encrypted files in the vault.
     List,
     /// Export entire vault as an encrypted .vbk archive.
-    Backup { #[arg(long)] output: Option<String> },
+    Backup {
+        #[arg(long)]
+        output: Option<String>,
+    },
     /// Restore from a .vbk backup archive.
     Restore { file: String },
     /// Verify AES-GCM authentication tag on every .rvb file.
@@ -177,7 +193,10 @@ pub enum VaultSubcmd {
     /// Show vault statistics and health.
     Status,
     /// Lock the vault (indefinite or timed).
-    Lock { #[arg(long)] minutes: Option<u64> },
+    Lock {
+        #[arg(long)]
+        minutes: Option<u64>,
+    },
     /// Unlock the vault.
     Unlock,
     /// Change the vault master password.
@@ -187,8 +206,11 @@ pub enum VaultSubcmd {
 }
 
 pub async fn vault(_args: VaultArgs) -> Result<()> {
-    not_implemented("vault", 5,
-        "Vaultion integration bridge — implemented in Phase 5")
+    not_implemented(
+        "vault",
+        5,
+        "Vaultion integration bridge — implemented in Phase 5",
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -216,8 +238,11 @@ pub enum DaemonSubcmd {
 }
 
 pub async fn daemon(_args: DaemonArgs) -> Result<()> {
-    not_implemented("daemon", 5,
-        "Tokio async daemon with systemd integration — implemented in Phase 5")
+    not_implemented(
+        "daemon",
+        5,
+        "Tokio async daemon with systemd integration — implemented in Phase 5",
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -241,8 +266,11 @@ pub enum ConfigSubcmd {
 }
 
 pub async fn config_cmd(_args: ConfigArgs) -> Result<()> {
-    not_implemented("config", 1,
-        "Use 'recoil status' to view the current configuration")
+    not_implemented(
+        "config",
+        1,
+        "Use 'recoil status' to view the current configuration",
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -259,8 +287,11 @@ pub struct ProvenanceArgs {
 }
 
 pub async fn provenance(_args: ProvenanceArgs) -> Result<()> {
-    not_implemented("provenance", 4,
-        "Chronology engine — Git SHA, download source, build command tracking")
+    not_implemented(
+        "provenance",
+        4,
+        "Chronology engine — Git SHA, download source, build command tracking",
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -274,8 +305,11 @@ pub struct TuiArgs {
 }
 
 pub async fn tui(_args: TuiArgs) -> Result<()> {
-    not_implemented("tui", 5,
-        "Interactive ratatui terminal UI — implemented in Phase 5")
+    not_implemented(
+        "tui",
+        5,
+        "Interactive ratatui terminal UI — implemented in Phase 5",
+    )
 }
 
 // ---------------------------------------------------------------------------

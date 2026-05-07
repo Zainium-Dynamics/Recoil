@@ -68,26 +68,26 @@ impl Distro {
     /// This is not intended to be user-facing or manually edited.
     pub fn shadow_dir_name(&self) -> String {
         match self {
-            Distro::Debian       => ".recoil-debian",
-            Distro::Ubuntu       => ".recoil-ubuntu",
-            Distro::Arch         => ".recoil-arch",
-            Distro::Manjaro      => ".recoil-manjaro",
-            Distro::Fedora       => ".recoil-fedora",
-            Distro::CentOs       => ".recoil-centos",
-            Distro::Rhel         => ".recoil-rhel",
-            Distro::AlmaLinux    => ".recoil-alma",
-            Distro::RockyLinux   => ".recoil-rocky",
-            Distro::OpenSuse     => ".recoil-opensuse",
-            Distro::Gentoo       => ".recoil-gentoo",
-            Distro::Void         => ".recoil-void",
-            Distro::Alpine       => ".recoil-alpine",
-            Distro::Mint         => ".recoil-mint",
-            Distro::PopOs        => ".recoil-pop",
+            Distro::Debian => ".recoil-debian",
+            Distro::Ubuntu => ".recoil-ubuntu",
+            Distro::Arch => ".recoil-arch",
+            Distro::Manjaro => ".recoil-manjaro",
+            Distro::Fedora => ".recoil-fedora",
+            Distro::CentOs => ".recoil-centos",
+            Distro::Rhel => ".recoil-rhel",
+            Distro::AlmaLinux => ".recoil-alma",
+            Distro::RockyLinux => ".recoil-rocky",
+            Distro::OpenSuse => ".recoil-opensuse",
+            Distro::Gentoo => ".recoil-gentoo",
+            Distro::Void => ".recoil-void",
+            Distro::Alpine => ".recoil-alpine",
+            Distro::Mint => ".recoil-mint",
+            Distro::PopOs => ".recoil-pop",
             Distro::ElementaryOs => ".recoil-elementary",
-            Distro::Kali         => ".recoil-kali",
-            Distro::Parrot       => ".recoil-parrot",
-            Distro::Zainium      => ".recoil-zainium",
-            Distro::Unknown(_)   => ".recoil-linux",
+            Distro::Kali => ".recoil-kali",
+            Distro::Parrot => ".recoil-parrot",
+            Distro::Zainium => ".recoil-zainium",
+            Distro::Unknown(_) => ".recoil-linux",
         }
         .to_string()
     }
@@ -99,26 +99,26 @@ impl Distro {
 
     pub fn display_name(&self) -> String {
         match self {
-            Distro::Debian       => "Debian GNU/Linux",
-            Distro::Ubuntu       => "Ubuntu",
-            Distro::Arch         => "Arch Linux",
-            Distro::Manjaro      => "Manjaro Linux",
-            Distro::Fedora       => "Fedora Linux",
-            Distro::CentOs       => "CentOS Linux",
-            Distro::Rhel         => "Red Hat Enterprise Linux",
-            Distro::AlmaLinux    => "AlmaLinux",
-            Distro::RockyLinux   => "Rocky Linux",
-            Distro::OpenSuse     => "openSUSE",
-            Distro::Gentoo       => "Gentoo Linux",
-            Distro::Void         => "Void Linux",
-            Distro::Alpine       => "Alpine Linux",
-            Distro::Mint         => "Linux Mint",
-            Distro::PopOs        => "Pop!_OS",
+            Distro::Debian => "Debian GNU/Linux",
+            Distro::Ubuntu => "Ubuntu",
+            Distro::Arch => "Arch Linux",
+            Distro::Manjaro => "Manjaro Linux",
+            Distro::Fedora => "Fedora Linux",
+            Distro::CentOs => "CentOS Linux",
+            Distro::Rhel => "Red Hat Enterprise Linux",
+            Distro::AlmaLinux => "AlmaLinux",
+            Distro::RockyLinux => "Rocky Linux",
+            Distro::OpenSuse => "openSUSE",
+            Distro::Gentoo => "Gentoo Linux",
+            Distro::Void => "Void Linux",
+            Distro::Alpine => "Alpine Linux",
+            Distro::Mint => "Linux Mint",
+            Distro::PopOs => "Pop!_OS",
             Distro::ElementaryOs => "elementary OS",
-            Distro::Kali         => "Kali Linux",
-            Distro::Parrot       => "Parrot OS",
-            Distro::Zainium      => "Zainium OS",
-            Distro::Unknown(n)   => return n.clone(),
+            Distro::Kali => "Kali Linux",
+            Distro::Parrot => "Parrot OS",
+            Distro::Zainium => "Zainium OS",
+            Distro::Unknown(n) => return n.clone(),
         }
         .to_string()
     }
@@ -128,10 +128,10 @@ impl Distro {
 
 #[derive(Debug)]
 struct OsRelease {
-    id:          String,
-    id_like:     Vec<String>,
+    id: String,
+    id_like: Vec<String>,
     pretty_name: String,
-    version_id:  Option<String>,
+    version_id: Option<String>,
 }
 
 impl OsRelease {
@@ -164,7 +164,12 @@ impl OsRelease {
 
         let version_id = map.get("VERSION_ID").cloned();
 
-        OsRelease { id, id_like, pretty_name, version_id }
+        OsRelease {
+            id,
+            id_like,
+            pretty_name,
+            version_id,
+        }
     }
 
     /// Returns true if `candidate` appears in ID or any ID_LIKE token.
@@ -177,9 +182,8 @@ impl OsRelease {
 
 /// Read /etc/os-release and classify the running distribution.
 pub fn detect_distro() -> Result<Distro> {
-    let content = std::fs::read_to_string("/etc/os-release").map_err(|e| {
-        RecoilError::OsDetection(format!("Cannot read /etc/os-release: {e}"))
-    })?;
+    let content = std::fs::read_to_string("/etc/os-release")
+        .map_err(|e| RecoilError::OsDetection(format!("Cannot read /etc/os-release: {e}")))?;
 
     let rel = OsRelease::parse(&content);
     debug!(id = %rel.id, id_like = ?rel.id_like, version = ?rel.version_id, pretty = %rel.pretty_name, "os-release parsed");
@@ -190,24 +194,24 @@ pub fn detect_distro() -> Result<Distro> {
 
 fn map_to_distro(rel: &OsRelease) -> Distro {
     match rel.id.as_str() {
-        "zainium"          => Distro::Zainium,
-        "debian"           => Distro::Debian,
-        "ubuntu"           => Distro::Ubuntu,
-        "linuxmint"        => Distro::Mint,
-        "pop"              => Distro::PopOs,
-        "elementary"       => Distro::ElementaryOs,
-        "kali"             => Distro::Kali,
-        "parrot"           => Distro::Parrot,
-        "arch"             => Distro::Arch,
-        "manjaro"          => Distro::Manjaro,
-        "fedora"           => Distro::Fedora,
-        "centos"           => Distro::CentOs,
-        "rhel"             => Distro::Rhel,
-        "almalinux"        => Distro::AlmaLinux,
-        "rocky"            => Distro::RockyLinux,
-        "gentoo"           => Distro::Gentoo,
-        "void"             => Distro::Void,
-        "alpine"           => Distro::Alpine,
+        "zainium" => Distro::Zainium,
+        "debian" => Distro::Debian,
+        "ubuntu" => Distro::Ubuntu,
+        "linuxmint" => Distro::Mint,
+        "pop" => Distro::PopOs,
+        "elementary" => Distro::ElementaryOs,
+        "kali" => Distro::Kali,
+        "parrot" => Distro::Parrot,
+        "arch" => Distro::Arch,
+        "manjaro" => Distro::Manjaro,
+        "fedora" => Distro::Fedora,
+        "centos" => Distro::CentOs,
+        "rhel" => Distro::Rhel,
+        "almalinux" => Distro::AlmaLinux,
+        "rocky" => Distro::RockyLinux,
+        "gentoo" => Distro::Gentoo,
+        "void" => Distro::Void,
+        "alpine" => Distro::Alpine,
         id if id.starts_with("opensuse") => Distro::OpenSuse,
         _ => {
             // Fall back through ID_LIKE before giving up
@@ -298,7 +302,10 @@ ID_LIKE=debian
     fn zainium_gets_correct_shadow_path() {
         let d = map_to_distro(&OsRelease::parse(ZAINIUM));
         assert_eq!(d, Distro::Zainium);
-        assert_eq!(d.shadow_path(), std::path::PathBuf::from("/.recoil-zainium"));
+        assert_eq!(
+            d.shadow_path(),
+            std::path::PathBuf::from("/.recoil-zainium")
+        );
     }
 
     #[test]
@@ -310,8 +317,11 @@ ID_LIKE=debian
     #[test]
     fn all_shadow_paths_are_absolute_and_prefixed() {
         let distros = [
-            Distro::Debian, Distro::Ubuntu, Distro::Arch,
-            Distro::Fedora, Distro::Zainium,
+            Distro::Debian,
+            Distro::Ubuntu,
+            Distro::Arch,
+            Distro::Fedora,
+            Distro::Zainium,
             Distro::Unknown("TestOS".into()),
         ];
         for d in &distros {

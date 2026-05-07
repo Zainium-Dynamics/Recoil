@@ -19,11 +19,11 @@ pub mod commands;
 
 use clap::{Parser, Subcommand};
 
-use commands::{
-    setup::SetupArgs, ConfigArgs, DaemonArgs, HistoryArgs,
-    ProvenanceArgs, RestoreArgs, StatusArgs, TuiArgs, VaultArgs,
-};
 use crate::error::Result;
+use commands::{
+    setup::SetupArgs, ConfigArgs, DaemonArgs, HistoryArgs, ProvenanceArgs, RestoreArgs, StatusArgs,
+    TuiArgs, VaultArgs,
+};
 
 // ---------------------------------------------------------------------------
 // Top-level CLI definition
@@ -84,14 +84,14 @@ pub enum Command {
 
 pub async fn dispatch(cli: Cli) -> Result<()> {
     match cli.command {
-        Command::Setup(a)      => commands::setup::run(a).await,
-        Command::Status(a)     => commands::status(a).await,
-        Command::Restore(a)    => commands::restore(a).await,
-        Command::History(a)    => commands::history(a).await,
-        Command::Vault(a)      => commands::vault(a).await,
-        Command::Daemon(a)     => commands::daemon(a).await,
-        Command::Config(a)     => commands::config_cmd(a).await,
+        Command::Setup(a) => commands::setup::run(a).await,
+        Command::Status(a) => commands::status(a).await,
+        Command::Restore(a) => commands::restore(a).await,
+        Command::History(a) => commands::history(a).await,
+        Command::Vault(a) => commands::vault(a).await,
+        Command::Daemon(a) => commands::daemon(a).await,
+        Command::Config(a) => commands::config_cmd(a).await,
         Command::Provenance(a) => commands::provenance(a).await,
-        Command::Tui(a)        => commands::tui(a).await,
+        Command::Tui(a) => commands::tui(a).await,
     }
 }

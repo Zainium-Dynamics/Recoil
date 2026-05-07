@@ -149,11 +149,11 @@ pub async fn run(args: SetupArgs) -> Result<()> {
     // ── Step 9: upcoming phases reminder ───────────────────────────────────
     println!();
     phase_line("Phase 2  —  Root filesystem mirror + chattr +i", false);
-    phase_line("Phase 3  —  AES-256-GCM vault + audit log",       false);
-    phase_line("Phase 4  —  LD_PRELOAD interceptor + chronology",  false);
-    phase_line("Phase 5  —  Vaultion integration + daemon",        false);
-    phase_line("Phase 6  —  eBPF + multi-distro packaging",        false);
-    phase_line("Phase 7  —  Validation report + v1.0.0 release",   false);
+    phase_line("Phase 3  —  AES-256-GCM vault + audit log", false);
+    phase_line("Phase 4  —  LD_PRELOAD interceptor + chronology", false);
+    phase_line("Phase 5  —  Vaultion integration + daemon", false);
+    phase_line("Phase 6  —  eBPF + multi-distro packaging", false);
+    phase_line("Phase 7  —  Validation report + v1.0.0 release", false);
 
     // ── Step 10: summary ───────────────────────────────────────────────────
     println!(
@@ -214,21 +214,20 @@ fn prompt_new_password() -> Result<String> {
                 "  {} Weak password — consider adding uppercase, digits and symbols.",
                 style("⚠").yellow(),
             ),
-            Strength::Moderate => println!(
-                "  {} Password strength: moderate.",
-                style("~").yellow(),
-            ),
-            Strength::Strong => println!(
-                "  {} Password strength: strong.",
-                style("✓").green(),
-            ),
+            Strength::Moderate => {
+                println!("  {} Password strength: moderate.", style("~").yellow(),)
+            }
+            Strength::Strong => println!("  {} Password strength: strong.", style("✓").green(),),
         }
 
         let pw2 = prompt_password("  Confirm password: ")
             .map_err(|e| RecoilError::Config(format!("Confirm prompt: {e}")))?;
 
         if pw1 != pw2 {
-            eprintln!("\n  {} Passwords do not match — try again.\n", style("✗").red());
+            eprintln!(
+                "\n  {} Passwords do not match — try again.\n",
+                style("✗").red()
+            );
             continue;
         }
 
@@ -253,7 +252,7 @@ fn spinner(msg: &'static str) -> ProgressBar {
     pb.set_style(
         ProgressStyle::with_template("  {spinner:.cyan} {msg}")
             .unwrap()
-            .tick_strings(&["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]),
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
     );
     pb.set_message(msg);
     pb.enable_steady_tick(Duration::from_millis(80));

@@ -27,8 +27,8 @@ use crate::security::{
 };
 use crate::utils::{
     constants::{
-        CONFIG_VERSION, DIR_DB, DIR_LOGS, DIR_RECOIL_B, DIR_RECOIL_ETC,
-        DIR_ROOT_MIRROR, DIR_VAULT, FILE_CONFIG, FILE_LOCK_STATE,
+        CONFIG_VERSION, DIR_DB, DIR_LOGS, DIR_RECOIL_B, DIR_RECOIL_ETC, DIR_ROOT_MIRROR, DIR_VAULT,
+        FILE_CONFIG, FILE_LOCK_STATE,
     },
     fs_detect::{FilesystemType, LinkStrategy},
     os_detect::Distro,
@@ -43,13 +43,13 @@ use crate::utils::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecoilConfig {
-    pub version:    String,
+    pub version: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 
-    pub distro:        Distro,
-    pub filesystem:    FilesystemType,
-    pub shadow_dir:    PathBuf,
+    pub distro: Distro,
+    pub filesystem: FilesystemType,
+    pub shadow_dir: PathBuf,
     pub link_strategy: LinkStrategy,
 
     // Phase completion flags — set true at the end of each phase
@@ -67,13 +67,13 @@ pub struct RecoilConfig {
 
 impl RecoilConfig {
     pub fn new(distro: Distro, filesystem: FilesystemType) -> Self {
-        let shadow_dir    = distro.shadow_path();
+        let shadow_dir = distro.shadow_path();
         let link_strategy = filesystem.link_strategy();
-        let now           = Utc::now();
+        let now = Utc::now();
         Self {
-            version:         CONFIG_VERSION.to_string(),
-            created_at:      now,
-            updated_at:      now,
+            version: CONFIG_VERSION.to_string(),
+            created_at: now,
+            updated_at: now,
             distro,
             filesystem,
             shadow_dir,
@@ -85,17 +85,29 @@ impl RecoilConfig {
             phase5_complete: false,
             phase6_complete: false,
             phase7_complete: false,
-            display_name:    None,
+            display_name: None,
         }
     }
 
     // Convenience accessors for shadow subdirectory paths
-    pub fn root_mirror(&self) -> PathBuf { self.shadow_dir.join(DIR_ROOT_MIRROR) }
-    pub fn vault_dir(&self)   -> PathBuf { self.shadow_dir.join(DIR_VAULT) }
-    pub fn logs_dir(&self)    -> PathBuf { self.shadow_dir.join(DIR_LOGS) }
-    pub fn db_dir(&self)      -> PathBuf { self.shadow_dir.join(DIR_DB) }
-    pub fn recoil_b(&self)    -> PathBuf { self.shadow_dir.join(DIR_RECOIL_B) }
-    pub fn recoil_etc(&self)  -> PathBuf { self.shadow_dir.join(DIR_RECOIL_ETC) }
+    pub fn root_mirror(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_ROOT_MIRROR)
+    }
+    pub fn vault_dir(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_VAULT)
+    }
+    pub fn logs_dir(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_LOGS)
+    }
+    pub fn db_dir(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_DB)
+    }
+    pub fn recoil_b(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_RECOIL_B)
+    }
+    pub fn recoil_etc(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_RECOIL_ETC)
+    }
 }
 
 // ── On-disk layout ────────────────────────────────────────────────────────────
@@ -117,37 +129,40 @@ impl ConfigManager {
     /// After Phase 2 the config migrates inside the shadow layer.
     pub fn bootstrap() -> Self {
         Self {
-            path: PathBuf::from(crate::utils::constants::BOOTSTRAP_CONFIG_DIR)
-                .join(FILE_CONFIG),
+            path: PathBuf::from(crate::utils::constants::BOOTSTRAP_CONFIG_DIR).join(FILE_CONFIG),
         }
     }
 
     pub fn from_shadow(shadow_dir: &Path) -> Self {
-        Self { path: shadow_dir.join(FILE_CONFIG) }
+        Self {
+            path: shadow_dir.join(FILE_CONFIG),
+        }
     }
 
-    pub fn path(&self) -> &Path   { &self.path }
-    pub fn exists(&self) -> bool  { self.path.exists() }
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+    pub fn exists(&self) -> bool {
+        self.path.exists()
+    }
 
     pub fn save(&self, config: &RecoilConfig, password: &str) -> Result<()> {
         if let Some(parent) = self.path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                RecoilError::Config(format!("Cannot create {:?}: {e}", parent))
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| RecoilError::Config(format!("Cannot create {:?}: {e}", parent)))?;
         }
 
-        let salt      = generate_salt();
-        let key       = derive_key(password, &salt)?;
-        let json      = serde_json::to_vec(config)?;
+        let salt = generate_salt();
+        let key = derive_key(password, &salt)?;
+        let json = serde_json::to_vec(config)?;
         let encrypted = encrypt(&json, &key)?;
 
         let mut blob = Vec::with_capacity(SALT_LEN + encrypted.len());
         blob.extend_from_slice(&salt);
         blob.extend_from_slice(&encrypted);
 
-        std::fs::write(&self.path, &blob).map_err(|e| {
-            RecoilError::Config(format!("Cannot write {:?}: {e}", self.path))
-        })?;
+        std::fs::write(&self.path, &blob)
+            .map_err(|e| RecoilError::Config(format!("Cannot write {:?}: {e}", self.path)))?;
 
         info!(path = %self.path.display(), "Config saved (AES-256-GCM encrypted)");
         Ok(())
@@ -158,9 +173,8 @@ impl ConfigManager {
             return Err(RecoilError::NotInitialised);
         }
 
-        let blob = std::fs::read(&self.path).map_err(|e| {
-            RecoilError::Config(format!("Cannot read {:?}: {e}", self.path))
-        })?;
+        let blob = std::fs::read(&self.path)
+            .map_err(|e| RecoilError::Config(format!("Cannot read {:?}: {e}", self.path)))?;
 
         if blob.len() < SALT_LEN + 1 {
             return Err(RecoilError::Config(
@@ -172,7 +186,7 @@ impl ConfigManager {
             .try_into()
             .map_err(|_| RecoilError::Config("Salt extraction failed".into()))?;
 
-        let key       = derive_key(password, &salt)?;
+        let key = derive_key(password, &salt)?;
         let plaintext = decrypt(&blob[SALT_LEN..], &key)?;
         let config: RecoilConfig = serde_json::from_slice(&plaintext)?;
 
@@ -187,9 +201,8 @@ impl ConfigManager {
         if !self.path.exists() {
             return Err(RecoilError::NotInitialised);
         }
-        let blob = std::fs::read(&self.path).map_err(|e| {
-            RecoilError::Config(format!("Cannot read config: {e}"))
-        })?;
+        let blob = std::fs::read(&self.path)
+            .map_err(|e| RecoilError::Config(format!("Cannot read config: {e}")))?;
         if blob.len() < SALT_LEN {
             return Err(RecoilError::Config("Config file truncated".into()));
         }
@@ -208,7 +221,9 @@ pub fn lock_state_path(base: &Path) -> PathBuf {
 
 pub fn load_lock_state(base: &Path) -> LockState {
     let path = lock_state_path(base);
-    if !path.exists() { return LockState::default(); }
+    if !path.exists() {
+        return LockState::default();
+    }
     std::fs::read(&path)
         .ok()
         .and_then(|b| serde_json::from_slice(&b).ok())
@@ -238,7 +253,9 @@ mod tests {
     #[test]
     fn roundtrip_save_and_load() {
         let dir = tempdir().unwrap();
-        let mgr = ConfigManager { path: dir.path().join(".config") };
+        let mgr = ConfigManager {
+            path: dir.path().join(".config"),
+        };
 
         mgr.save(&sample_config(), "correct_password_1!").unwrap();
         let loaded = mgr.load("correct_password_1!").unwrap();
@@ -251,7 +268,9 @@ mod tests {
     #[test]
     fn wrong_password_gives_auth_failed() {
         let dir = tempdir().unwrap();
-        let mgr = ConfigManager { path: dir.path().join(".config") };
+        let mgr = ConfigManager {
+            path: dir.path().join(".config"),
+        };
         mgr.save(&sample_config(), "correct!1").unwrap();
         assert!(matches!(
             mgr.load("totally_wrong"),
@@ -262,7 +281,9 @@ mod tests {
     #[test]
     fn missing_file_gives_not_initialised() {
         let dir = tempdir().unwrap();
-        let mgr = ConfigManager { path: dir.path().join(".config") };
+        let mgr = ConfigManager {
+            path: dir.path().join(".config"),
+        };
         assert!(matches!(
             mgr.load("anything"),
             Err(RecoilError::NotInitialised)

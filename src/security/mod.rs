@@ -44,15 +44,19 @@ use crate::error::{RecoilError, Result};
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /// 600,000 iterations — OWASP recommendation for PBKDF2-HMAC-SHA512 (2024).
-pub const KDF_ITERS:  u32  = 600_000;
-pub const KEY_LEN:    usize = 32;   // 256-bit AES key
-pub const NONCE_LEN:  usize = 12;   // 96-bit GCM nonce per NIST SP 800-38D
-pub const SALT_LEN:   usize = 32;   // 256-bit random salt
+pub const KDF_ITERS: u32 = 600_000;
+pub const KEY_LEN: usize = 32; // 256-bit AES key
+pub const NONCE_LEN: usize = 12; // 96-bit GCM nonce per NIST SP 800-38D
+pub const SALT_LEN: usize = 32; // 256-bit random salt
 
 // Lockout thresholds and durations (all in seconds)
-const T1_ATTEMPTS: u32 = 3;  const T1_SECS: u64 = 20 * 60;
-const T2_ATTEMPTS: u32 = 15; const T2_WINDOW: u64 = 3_600; const T2_SECS: u64 = 3 * 3_600;
-const T3_ATTEMPTS: u32 = 50; const T3_WINDOW: u64 = 86_400;
+const T1_ATTEMPTS: u32 = 3;
+const T1_SECS: u64 = 20 * 60;
+const T2_ATTEMPTS: u32 = 15;
+const T2_WINDOW: u64 = 3_600;
+const T2_SECS: u64 = 3 * 3_600;
+const T3_ATTEMPTS: u32 = 50;
+const T3_WINDOW: u64 = 86_400;
 
 // ── MasterKey ─────────────────────────────────────────────────────────────────
 
@@ -62,7 +66,9 @@ const T3_ATTEMPTS: u32 = 50; const T3_WINDOW: u64 = 86_400;
 pub struct MasterKey([u8; KEY_LEN]);
 
 impl MasterKey {
-    pub fn as_bytes(&self) -> &[u8; KEY_LEN] { &self.0 }
+    pub fn as_bytes(&self) -> &[u8; KEY_LEN] {
+        &self.0
+    }
 }
 
 impl std::fmt::Debug for MasterKey {
@@ -111,11 +117,11 @@ pub fn encrypt(plaintext: &[u8], key: &MasterKey) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-/// Decrypt data produced by `encrypt()`.
-///
-/// Returns `AuthFailed` regardless of whether the cause was a wrong key,
-/// a tampered ciphertext, or a truncated blob — leaking that distinction
-/// would help an attacker narrow down the failure mode.
+// Decrypt data produced by `encrypt()`.
+//
+// Returns `AuthFailed` regardless of whether the cause was a wrong key,
+// a tampered ciphertext, or a truncated blob — leaking that distinction
+// would help an attacker narrow down the failure mode.
 pub fn decrypt(data: &[u8], key: &MasterKey) -> Result<Vec<u8>> {
     if data.len() < NONCE_LEN + 16 {
         // Minimum: 12-byte nonce + 16-byte GCM auth tag
@@ -131,16 +137,16 @@ pub fn decrypt(data: &[u8], key: &MasterKey) -> Result<Vec<u8>> {
 
 // ── Rate limiter ───────────────────────────────────────────────────────────────
 
-/// Persisted lock state.  All timestamps are Unix seconds so the timers
-/// survive process restarts and reboots — an attacker cannot reset a lockout
-/// by rebooting the machine.
+// Persisted lock state.  All timestamps are Unix seconds so the timers
+// survive process restarts and reboots — an attacker cannot reset a lockout
+// by rebooting the machine.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LockState {
-    pub consecutive:  u32,
-    pub window_start: u64,  // Unix ts of first attempt in the current window
-    pub window_count: u32,  // Attempts seen in the current sliding window
-    pub locked_until: u64,  // Unix ts; 0 = not locked
-    pub hard_locked:  bool,
+    pub consecutive: u32,
+    pub window_start: u64, // Unix ts of first attempt in the current window
+    pub window_count: u32, // Attempts seen in the current sliding window
+    pub locked_until: u64, // Unix ts; 0 = not locked
+    pub hard_locked: bool,
 }
 
 impl LockState {
@@ -151,7 +157,7 @@ impl LockState {
         }
         let now = unix_now();
         if now < self.locked_until {
-            let mins = (self.locked_until - now + 59) / 60;
+            let mins = (self.locked_until - now).div_ceil(60);
             return Err(RecoilError::RateLimited { minutes: mins });
         }
         Ok(())
@@ -173,20 +179,22 @@ impl LockState {
             self.window_count += 1;
         }
 
-        warn!(consecutive = self.consecutive, window = self.window_count,
-              "Failed authentication attempt");
+        warn!(
+            consecutive = self.consecutive,
+            window = self.window_count,
+            "Failed authentication attempt"
+        );
 
         // Evaluate tiers highest → lowest so we apply the most severe that applies
-        if self.window_count >= T3_ATTEMPTS
-            && now.saturating_sub(self.window_start) <= T3_WINDOW
-        {
-            warn!("Hard lock activated ({} attempts in 24h)", self.window_count);
+        if self.window_count >= T3_ATTEMPTS && now.saturating_sub(self.window_start) <= T3_WINDOW {
+            warn!(
+                "Hard lock activated ({} attempts in 24h)",
+                self.window_count
+            );
             self.hard_locked = true;
             return;
         }
-        if self.window_count >= T2_ATTEMPTS
-            && now.saturating_sub(self.window_start) <= T2_WINDOW
-        {
+        if self.window_count >= T2_ATTEMPTS && now.saturating_sub(self.window_start) <= T2_WINDOW {
             self.locked_until = now + T2_SECS;
             warn!("Tier-2 lock: {} min", T2_SECS / 60);
             return;
@@ -205,10 +213,14 @@ fn unix_now() -> u64 {
         .as_secs()
 }
 
-// ── Password strength hint ────────────────────────────────────────────────────
+// ── Password strength hint
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Strength { Weak, Moderate, Strong }
+pub enum Strength {
+    Weak,
+    Moderate,
+    Strong,
+}
 
 pub fn password_strength(pw: &str) -> Strength {
     let score: u8 = [
@@ -216,16 +228,19 @@ pub fn password_strength(pw: &str) -> Strength {
         pw.chars().any(|c| c.is_lowercase()),
         pw.chars().any(|c| c.is_ascii_digit()),
         pw.chars().any(|c| !c.is_alphanumeric()),
-    ].iter().map(|&b| b as u8).sum();
+    ]
+    .iter()
+    .map(|&b| b as u8)
+    .sum();
 
     match (pw.len(), score) {
         (l, s) if l >= 16 && s >= 3 => Strength::Strong,
-        (l, s) if l >= 8  && s >= 2 => Strength::Moderate,
-        _                            => Strength::Weak,
+        (l, s) if l >= 8 && s >= 2 => Strength::Moderate,
+        _ => Strength::Weak,
     }
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// ── Tests
 
 #[cfg(test)]
 mod tests {
@@ -250,15 +265,15 @@ mod tests {
     fn encrypt_decrypt_roundtrip() {
         let key = derive_key("roundtrip_test!", &generate_salt()).unwrap();
         let msg = b"sensitive system data \xFF\x00\x42";
-        let ct  = encrypt(msg, &key).unwrap();
-        let pt  = decrypt(&ct, &key).unwrap();
+        let ct = encrypt(msg, &key).unwrap();
+        let pt = decrypt(&ct, &key).unwrap();
         assert_eq!(pt, msg);
     }
 
     #[test]
     fn wrong_key_gives_auth_failed() {
         let k1 = derive_key("correct", &generate_salt()).unwrap();
-        let k2 = derive_key("wrong",   &generate_salt()).unwrap();
+        let k2 = derive_key("wrong", &generate_salt()).unwrap();
         let ct = encrypt(b"secret", &k1).unwrap();
         assert!(matches!(decrypt(&ct, &k2), Err(RecoilError::AuthFailed)));
     }
@@ -267,14 +282,16 @@ mod tests {
     fn tampered_ciphertext_gives_auth_failed() {
         let key = derive_key("tamper", &generate_salt()).unwrap();
         let mut ct = encrypt(b"real data", &key).unwrap();
-        ct[NONCE_LEN + 2] ^= 0xFF;  // flip a byte past the nonce
+        ct[NONCE_LEN + 2] ^= 0xFF; // flip a byte past the nonce
         assert!(matches!(decrypt(&ct, &key), Err(RecoilError::AuthFailed)));
     }
 
     #[test]
     fn tier1_lock_after_3_failures() {
         let mut s = LockState::default();
-        for _ in 0..3 { s.on_failure(); }
+        for _ in 0..3 {
+            s.on_failure();
+        }
         assert!(matches!(s.check(), Err(RecoilError::RateLimited { .. })));
     }
 
@@ -289,8 +306,8 @@ mod tests {
 
     #[test]
     fn password_strength_classification() {
-        assert_eq!(password_strength("abc"),                Strength::Weak);
-        assert_eq!(password_strength("Password1"),          Strength::Moderate);
+        assert_eq!(password_strength("abc"), Strength::Weak);
+        assert_eq!(password_strength("Password1"), Strength::Moderate);
         assert_eq!(password_strength("V@ult_K3y!2026#Sec"), Strength::Strong);
     }
 }

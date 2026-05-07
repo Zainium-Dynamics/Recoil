@@ -15,7 +15,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://gnu.org>.
 */
 
-
 //! # Recoil
 //!
 //! Immutable system safety net, chronology engine, and integrated vault

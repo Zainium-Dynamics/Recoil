@@ -146,7 +146,6 @@ pub async fn run(args: SetupArgs) -> Result<()> {
         ok_tick(),
     ));
 
-    // ── Step 9: upcoming phases reminder 
     println!();
     phase_line("Phase 2  —  Root filesystem mirror + chattr +i", false);
     phase_line("Phase 3  —  AES-256-GCM vault + audit log", false);

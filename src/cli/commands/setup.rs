@@ -146,7 +146,7 @@ pub async fn run(args: SetupArgs) -> Result<()> {
         ok_tick(),
     ));
 
-    // ── Step 9: upcoming phases reminder ───────────────────────────────────
+    // ── Step 9: upcoming phases reminder 
     println!();
     phase_line("Phase 2  —  Root filesystem mirror + chattr +i", false);
     phase_line("Phase 3  —  AES-256-GCM vault + audit log", false);
@@ -155,7 +155,6 @@ pub async fn run(args: SetupArgs) -> Result<()> {
     phase_line("Phase 6  —  eBPF + multi-distro packaging", false);
     phase_line("Phase 7  —  Validation report + v1.0.0 release", false);
 
-    // ── Step 10: summary ───────────────────────────────────────────────────
     println!(
         "\n  {} Recoil Phase 1 setup complete.\n",
         style("✓").green().bold(),
@@ -185,9 +184,7 @@ pub async fn run(args: SetupArgs) -> Result<()> {
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
 // Password prompt
-// ---------------------------------------------------------------------------
 
 fn prompt_new_password() -> Result<String> {
     println!(
@@ -235,9 +232,7 @@ fn prompt_new_password() -> Result<String> {
     }
 }
 
-// ---------------------------------------------------------------------------
 // UI helpers
-// ---------------------------------------------------------------------------
 
 fn print_banner() {
     println!(

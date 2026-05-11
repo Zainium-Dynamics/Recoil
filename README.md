@@ -26,7 +26,7 @@ After setup, a statically compiled recovery binary is placed at `/.recoil-<distr
 ## Shadow Directory Structure
 
 ```
-/.recoil-debian/                 Hidden. chattr +i. Survives sudo rm -rf.
+/.recoil-linux/                 Hidden. chattr +i. Survives sudo rm -rf.
 │
 ├── root-mirror/                 Complete root filesystem mirror
 │   ├── bin/    (real directory — not a symlink)

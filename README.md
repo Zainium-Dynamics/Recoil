@@ -4,8 +4,7 @@
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-000000?style=flat&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL_v3-blue.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-blue)](https://kernel.org)
-[![Phase 1](https://img.shields.io/badge/Phase_1-In_Development-yellow)]()
-[![Phase 2](https://img.shields.io/badge/Phase_2-In_Development-yellow)]()
+[![Phase 1](https://img.shields.io/badge/Phase_1-In_Development-yellow)]() 
 
 Recoil is a Rust-native system safety layer for Linux. It creates a complete, kernel-immutable mirror of your root filesystem inside a hidden shadow directory, intercepts destructive terminal commands in real time, and maintains a forensic-quality record of every significant system change. When something goes wrong — an accidental `rm -rf`, a wrong `dd` target, a corrupted system path — Recoil brings it back.
 
@@ -64,6 +63,9 @@ After setup, a statically compiled recovery binary is placed at `/.recoil-<distr
 | Linux Mint | `/.recoil-mint/` |
 | Zainium OS | `/.recoil-zainium/` |
 | Generic Linux | `/.recoil-linux/` |
+
+> **Missing your distribution?**
+> Recoil's OS detection engine is designed to be highly extensible. Contributors are highly encouraged to add support for their favorite Linux-based operating systems. If you want to see your custom distro or a missing Linux flavor supported, feel free to open a Pull Request!
 
 ---
 
@@ -167,9 +169,9 @@ On first setup, Recoil detects that it is running from `~/.cargo/bin/` and reloc
 
 Recoil is developed alongside two other active projects under the same author.
 
-**Zainium OS** is a custom Debian-based Linux distribution with Rust-native system tooling at its core. Recoil will be shipped as a default-enabled system component in Zainium OS, making it the first Linux distribution to treat data loss as a preventable system failure rather than an expected user consequence.
+**Zainium OS** is a custom Debian-based Linux distribution currently in its final stages of development, with an early public release arriving soon. It is driven by Rust-native system tooling at its core, featuring our custom-built Quantra architecture: Quantra-init (a memory-safe init system), Quantra-ramfs, and Quantra-net. Recoil will be shipped as a default-enabled system component in Zainium OS, making it the first Linux distribution to treat data loss as a preventable system failure rather than an expected user consequence.
 
-**zutils** (coreutils → Rust) and **oxideutiles** (binutils → Rust) are rewrites of foundational GNU userspace tools in memory-safe Rust. These projects share the same philosophy as Recoil: replace decades-old C infrastructure with modern, auditable Rust while maintaining full compatibility.
+**zex (Zainium-eXecutor)** zex is a next-generation, monolithic system executor and universal package manager written in memory-safe Rust. Replacing fragmented legacy utilities, zex unifies system commands, package management (sudo zex install <pkg>), and independent tool execution into a single, high-performance architectural blueprint. Like Recoil, zex aims to replace decades-old C infrastructure with modern, auditable, and secure engineering.
 
 ---
 

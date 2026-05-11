@@ -171,7 +171,7 @@ Recoil is developed alongside two other active projects under the same author.
 
 **Zainium OS** is a custom Debian-based Linux distribution currently in its final stages of development, with an early public release arriving soon. It is driven by Rust-native system tooling at its core, featuring our custom-built Quantra architecture: Quantra-init (a memory-safe init system), Quantra-ramfs, and Quantra-net. Recoil will be shipped as a default-enabled system component in Zainium OS, making it the first Linux distribution to treat data loss as a preventable system failure rather than an expected user consequence.
 
-**zex (Zainium-eXecutor)** zex is a next-generation, monolithic system executor and universal package manager written in memory-safe Rust. Replacing fragmented legacy utilities, zex unifies system commands, package management (sudo zex install <pkg>), and independent tool execution into a single, high-performance architectural blueprint. Like Recoil, zex aims to replace decades-old C infrastructure with modern, auditable, and secure engineering.
+**zex (Zainium-eXecutor)** zex is a next-generation, monolithic system executor and universal package manager for *ZainiumOS* written in memory-safe Rust. Replacing fragmented legacy utilities, zex unifies system commands, package management (sudo zex install <pkg>), and independent tool execution into a single, high-performance architectural blueprint. Like Recoil, zex aims to replace decades-old C infrastructure with modern, auditable, and secure engineering.
 
 ---
 

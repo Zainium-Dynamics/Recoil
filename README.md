@@ -1,12 +1,13 @@
 # Recoil
 ### Immutable System Safety Net, Chronology Engine & Integrated Vault for Linux
 
+[![Website: Zainium Dynamics](https://img.shields.io/badge/Website-Zainium_Dynamics-000000?style=flat)](https://zainiumdynamics.tech)
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-000000?style=flat&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL_v3-blue.svg)](LICENSE)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-blue)](https://kernel.org)
 [![Phase 1](https://img.shields.io/badge/Phase_1-In_Development-yellow)]() 
 
-Recoil is a Rust-native system safety layer for Linux. It creates a complete, kernel-immutable mirror of your root filesystem inside a hidden shadow directory, intercepts destructive terminal commands in real time, and maintains a forensic-quality record of every significant system change. When something goes wrong — an accidental `rm -rf`, a wrong `dd` target, a corrupted system path — Recoil brings it back.
+Recoil is a Rust-native system safety layer for Linux, built by [Zainium Dynamics](https://zainiumdynamics.tech). It creates a complete, kernel-immutable mirror of your root filesystem inside a hidden shadow directory, intercepts destructive terminal commands in real time, and maintains a forensic-quality record of every significant system change. When something goes wrong — an accidental `rm -rf`, a wrong `dd` target, a corrupted system path — Recoil brings it back.
 
 Recoil also integrates Vaultion, a production-grade per-file AES-256-GCM encrypted vault, as a hardened subcomponent housed entirely within the shadow layer, isolated from the standard filesystem paths that automated attack tooling targets.
 

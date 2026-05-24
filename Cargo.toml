@@ -1,11 +1,11 @@
 [package]
 name        = "recoil"
 version     = "0.1.0"
-edition     = "2021"
-authors     = ["Ali <alizain.arch@gmail.com>"]
+edition     = "2024"
+authors     = ["Ali Zain <alizain.arch@gmail.com>"]
 description = "Immutable system safety net and chronology engine for Linux"
 license     = "GPL-3.0-or-later"
-repository  = "https://github.com/alizainx/recoil"
+repository  = "https://github.com/Zainium-Dynamics/Recoil"
 keywords    = ["linux", "safety", "recovery", "security", "filesystem"]
 categories  = ["command-line-utilities", "os"]
 

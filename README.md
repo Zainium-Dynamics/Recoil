@@ -1,7 +1,6 @@
 
 # Recoil
 ### Immutable System Safety Net, Chronology Engine & Integrated Vault for Linux
-# ⚠️ Project Migrated to GitLab
 
 [![Website: Zainium Dynamics](https://img.shields.io/badge/Website-Zainium_Dynamics-blue?style=flat)](https://zainiumdynamics.tech)
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-000000?style=flat&logo=rust&logoColor=white)](https://www.rust-lang.org)
@@ -14,9 +13,6 @@ Recoil is a Rust-native system safety layer for Linux, built by [Zainium Dynamic
 Please note that active development and maintenance of this project have officially moved to **GitLab**. This GitHub repository is now archived and will no longer receive updates.
 
 Recoil also integrates Vaultion, a production-grade per-file AES-256-GCM encrypted vault, as a hardened subcomponent housed entirely within the shadow layer, isolated from the standard filesystem paths that automated attack tooling targets.
-### 👉 Where to find us now:
-* **Source Code & Issues:** [GitLab - darkgineer/recoil](https://gitlab.com/alizain.arch/recoil)
-* **Official Website:** [Zainium Dynamics - Recoil](https://zainiumdynamics.tech)
 
 ---
 

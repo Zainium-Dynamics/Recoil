@@ -284,4 +284,61 @@ mod tests {
         let loaded = load_lock_state(dir.path());
         assert_eq!(loaded.consecutive, 2);
     }
+
+    #[test]
+    fn missing_lock_state_file_returns_default() {
+        let dir = tempdir().unwrap();
+        let loaded = load_lock_state(dir.path());
+        assert_eq!(loaded.consecutive, 0);
+        assert_eq!(loaded.locked_until, 0);
+    }
+
+    #[test]
+    fn truncated_config_file_returns_config_error() {
+        let dir = tempdir().unwrap();
+        let mgr = ConfigManager {
+            path: dir.path().join(FILE_CONFIG),
+        };
+        std::fs::write(mgr.path(), [0u8; 4]).unwrap();
+        assert!(matches!(mgr.load("anything"), Err(RecoilError::Config(_))));
+    }
+
+    #[test]
+    fn config_path_helpers_join_under_shadow_dir() {
+        let cfg = sample_config();
+        for path in [
+            cfg.root_mirror(),
+            cfg.versions_dir(),
+            cfg.vault_dir(),
+            cfg.logs_dir(),
+            cfg.db_dir(),
+            cfg.recoil_b(),
+            cfg.recoil_etc(),
+            cfg.config_path(),
+            cfg.lock_state_path(),
+        ] {
+            assert!(
+                path.starts_with(&cfg.shadow_dir),
+                "{path:?} must live under {:?}",
+                cfg.shadow_dir
+            );
+        }
+    }
+
+    #[test]
+    fn save_regenerates_salt_on_every_write() {
+        let dir = tempdir().unwrap();
+        let mgr = ConfigManager {
+            path: dir.path().join(FILE_CONFIG),
+        };
+        mgr.save(&sample_config(), "pass-1-42!").unwrap();
+        let first = std::fs::read(mgr.path()).unwrap();
+        mgr.save(&sample_config(), "pass-1-42!").unwrap();
+        let second = std::fs::read(mgr.path()).unwrap();
+        assert_ne!(
+            first[..SALT_LEN],
+            second[..SALT_LEN],
+            "salt must be fresh on every save"
+        );
+    }
 }

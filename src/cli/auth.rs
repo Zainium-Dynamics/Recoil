@@ -157,3 +157,16 @@ pub fn verify_master_password(context: &str) -> Result<RecoilConfig> {
 
     Err(RecoilError::AuthFailed)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ConfigManager;
+
+    #[test]
+    fn lock_state_dir_is_configs_parent_directory() {
+        let shadow = Path::new("/tmp/.recoil-test-shadow");
+        let mgr = ConfigManager::from_shadow(shadow);
+        assert_eq!(lock_state_dir(&mgr), shadow);
+    }
+}

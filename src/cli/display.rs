@@ -166,3 +166,61 @@ pub fn print_quick_commands() {
         SYM_INFO
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_bytes_sub_kib() {
+        assert_eq!(format_bytes(512), "512 B");
+    }
+
+    #[test]
+    fn format_bytes_kib_boundary() {
+        assert_eq!(format_bytes(1024), "1.0 KB");
+        assert_eq!(format_bytes(1024 * 1023), "1023.0 KB");
+    }
+
+    #[test]
+    fn format_bytes_mib_boundary() {
+        assert_eq!(format_bytes(1024 * 1024), "1.0 MB");
+    }
+
+    #[test]
+    fn format_bytes_gib_boundary() {
+        assert_eq!(format_bytes(1024 * 1024 * 1024), "1.0 GiB");
+    }
+
+    #[test]
+    fn format_ago_just_now_under_a_minute() {
+        assert_eq!(format_ago(0), "just now");
+        assert_eq!(format_ago(59), "just now");
+    }
+
+    #[test]
+    fn format_ago_minutes_singular_and_plural() {
+        assert_eq!(format_ago(60), "1 minute ago");
+        assert_eq!(format_ago(120), "2 minutes ago");
+    }
+
+    #[test]
+    fn format_ago_hours_singular_and_plural() {
+        assert_eq!(format_ago(3600), "1 hour ago");
+        assert_eq!(format_ago(7200), "2 hours ago");
+    }
+
+    #[test]
+    fn format_ago_days_singular_and_plural() {
+        assert_eq!(format_ago(86400), "1 day ago");
+        assert_eq!(format_ago(172800), "2 days ago");
+    }
+
+    #[test]
+    fn format_ago_boundary_just_under_next_unit() {
+        // 3599s is still minutes, not hours.
+        assert_eq!(format_ago(3599), "59 minutes ago");
+        // 86399s is still hours, not days.
+        assert_eq!(format_ago(86399), "23 hours ago");
+    }
+}

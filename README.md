@@ -210,8 +210,6 @@ sudo ./target/release/recoil setup
 | Milestone 4 | Hybrid Interception (LD_PRELOAD + eBPF) and Provenance | ⚪ Planned |
 | Milestone 5 | Recovery Engine, Daemon, Packaging, Redox OS, Release | ⚪ Planned |
 
-**Grant:** NLnet NGI Zero Commons, June 2026 application · €50,000
-
 ---
 
 ## Security
@@ -249,10 +247,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development standards, the pull reque
 
 ## Related Projects
 
-**oxideutils**: A Rust rewrite of GNU binutils. [github.com/Zainium-Dynamics/oxideutils](https://github.com/Zainium-Dynamics/oxideutils)
-
-**Quantra System**: A memory-safe Rust PID 1 init system and initramfs. [github.com/Zainium-Dynamics/Quantra-System](https://github.com/Zainium-Dynamics/Quantra-System)
-
 **Vaultion**: Per-file AES-256-GCM encrypted vault, the cryptographic foundation for Recoil's vault engine. [github.com/Zainium-Dynamics/vaultion](https://github.com/Zainium-Dynamics/vaultion)
 
 ---
@@ -260,5 +254,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development standards, the pull reque
 ## License
 
 GNU General Public License v3.0, see [LICENSE](LICENSE) for the full text.
-
-Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>

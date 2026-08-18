@@ -1,19 +1,19 @@
 /*
-Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://gnu.org>.
-*/
+ * Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -23,11 +23,10 @@ use tracing::{debug, warn};
 
 use crate::error::{RecoilError, Result};
 
-// Distro enum
+// ── Distro enum ──────────────────────────────────────────────────────────────
 
-/// Every distribution Recoil knows about.  The `Unknown` variant catches
-/// anything not in this list — we still protect those systems, they just
-/// get the generic shadow directory name.
+/// All recognised Linux distributions plus a generic fallback.
+/// The shadow directory name is derived from this value.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Distro {
@@ -49,23 +48,13 @@ pub enum Distro {
     ElementaryOs,
     Kali,
     Parrot,
-    Zainium,
+    /// Generic fallback carrying the PRETTY_NAME value.
     Unknown(String),
 }
 
 impl Distro {
-    /// Returns the name of the hidden shadow directory used for Recoil
-    /// on the root filesystem.
-    ///
-    /// Each distribution gets its own unique namespace (e.g. `.recoil-ubuntu`,
-    /// `.recoil-arch`) so that:
-    ///
-    /// - Multi-boot systems do not collide between installations
-    /// - Each OS instance can isolate its own Recoil metadata
-    /// - Forensic and recovery tools can clearly identify origin system
-    /// - Shadow state remains distro-specific and traceable
-    ///
-    /// This is not intended to be user-facing or manually edited.
+    /// Dot-prefixed hidden shadow directory name.
+    /// The leading dot makes the directory invisible to standard `ls`.
     pub fn shadow_dir_name(&self) -> String {
         match self {
             Distro::Debian => ".recoil-debian",
@@ -86,115 +75,102 @@ impl Distro {
             Distro::ElementaryOs => ".recoil-elementary",
             Distro::Kali => ".recoil-kali",
             Distro::Parrot => ".recoil-parrot",
-            Distro::Zainium => ".recoil-zainium",
             Distro::Unknown(_) => ".recoil-linux",
         }
         .to_string()
     }
 
-    /// Absolute path of the shadow directory root (e.g. `/.recoil-debian`).
+    /// Absolute path of the shadow directory root, e.g. `/.recoil-debian`.
     pub fn shadow_path(&self) -> PathBuf {
         PathBuf::from("/").join(self.shadow_dir_name())
     }
 
+    /// Human-readable display name for terminal output.
     pub fn display_name(&self) -> String {
         match self {
-            Distro::Debian => "Debian GNU/Linux",
-            Distro::Ubuntu => "Ubuntu",
-            Distro::Arch => "Arch Linux",
-            Distro::Manjaro => "Manjaro Linux",
-            Distro::Fedora => "Fedora Linux",
-            Distro::CentOs => "CentOS Linux",
-            Distro::Rhel => "Red Hat Enterprise Linux",
-            Distro::AlmaLinux => "AlmaLinux",
-            Distro::RockyLinux => "Rocky Linux",
-            Distro::OpenSuse => "openSUSE",
-            Distro::Gentoo => "Gentoo Linux",
-            Distro::Void => "Void Linux",
-            Distro::Alpine => "Alpine Linux",
-            Distro::Mint => "Linux Mint",
-            Distro::PopOs => "Pop!_OS",
-            Distro::ElementaryOs => "elementary OS",
-            Distro::Kali => "Kali Linux",
-            Distro::Parrot => "Parrot OS",
-            Distro::Zainium => "Zainium OS",
-            Distro::Unknown(n) => return n.clone(),
+            Distro::Debian => "Debian GNU/Linux".into(),
+            Distro::Ubuntu => "Ubuntu".into(),
+            Distro::Arch => "Arch Linux".into(),
+            Distro::Manjaro => "Manjaro Linux".into(),
+            Distro::Fedora => "Fedora Linux".into(),
+            Distro::CentOs => "CentOS Linux".into(),
+            Distro::Rhel => "Red Hat Enterprise Linux".into(),
+            Distro::AlmaLinux => "AlmaLinux".into(),
+            Distro::RockyLinux => "Rocky Linux".into(),
+            Distro::OpenSuse => "openSUSE".into(),
+            Distro::Gentoo => "Gentoo Linux".into(),
+            Distro::Void => "Void Linux".into(),
+            Distro::Alpine => "Alpine Linux".into(),
+            Distro::Mint => "Linux Mint".into(),
+            Distro::PopOs => "Pop!_OS".into(),
+            Distro::ElementaryOs => "elementary OS".into(),
+            Distro::Kali => "Kali Linux".into(),
+            Distro::Parrot => "Parrot OS".into(),
+            Distro::Unknown(n) => n.clone(),
         }
-        .to_string()
     }
 }
 
-// /etc/os-release parser
+// ── /etc/os-release parser ───────────────────────────────────────────────────
 
-#[derive(Debug)]
 struct OsRelease {
     id: String,
     id_like: Vec<String>,
     pretty_name: String,
-    version_id: Option<String>,
 }
 
 impl OsRelease {
     fn parse(src: &str) -> Self {
         let mut map: HashMap<&str, String> = HashMap::new();
-
         for line in src.lines() {
             let line = line.trim();
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
             if let Some((k, v)) = line.split_once('=') {
-                // Strip surrounding quotes if present
                 let v = v.trim_matches('"').trim_matches('\'').to_string();
                 map.insert(k, v);
             }
         }
-
         let id = map.get("ID").cloned().unwrap_or_default().to_lowercase();
-
         let id_like = map
             .get("ID_LIKE")
             .map(|s| s.split_whitespace().map(|w| w.to_lowercase()).collect())
             .unwrap_or_default();
-
         let pretty_name = map
             .get("PRETTY_NAME")
             .cloned()
             .unwrap_or_else(|| "Linux".to_string());
-
-        let version_id = map.get("VERSION_ID").cloned();
-
         OsRelease {
             id,
             id_like,
             pretty_name,
-            version_id,
         }
     }
 
-    /// Returns true if `candidate` appears in ID or any ID_LIKE token.
-    fn matches(&self, candidate: &str) -> bool {
+    fn matches_id(&self, candidate: &str) -> bool {
         self.id == candidate || self.id_like.iter().any(|s| s == candidate)
     }
 }
 
-// Public API
+// ── Public API ───────────────────────────────────────────────────────────────
 
-/// Read /etc/os-release and classify the running distribution.
+/// Detect the running Linux distribution from `/etc/os-release`.
 pub fn detect_distro() -> Result<Distro> {
-    let content = std::fs::read_to_string("/etc/os-release")
-        .map_err(|e| RecoilError::OsDetection(format!("Cannot read /etc/os-release: {e}")))?;
-
-    let rel = OsRelease::parse(&content);
-    debug!(id = %rel.id, id_like = ?rel.id_like, version = ?rel.version_id, pretty = %rel.pretty_name, "os-release parsed");
-
-    let distro = map_to_distro(&rel);
-    Ok(distro)
+    let src = std::fs::read_to_string("/etc/os-release")
+        .map_err(|e| RecoilError::OsDetection(format!("cannot read /etc/os-release: {e}")))?;
+    let rel = OsRelease::parse(&src);
+    debug!(
+        id = %rel.id,
+        id_like = ?rel.id_like,
+        pretty = %rel.pretty_name,
+        "os-release parsed"
+    );
+    Ok(map_to_distro(&rel))
 }
 
 fn map_to_distro(rel: &OsRelease) -> Distro {
     match rel.id.as_str() {
-        "zainium" => Distro::Zainium,
         "debian" => Distro::Debian,
         "ubuntu" => Distro::Ubuntu,
         "linuxmint" => Distro::Mint,
@@ -214,26 +190,26 @@ fn map_to_distro(rel: &OsRelease) -> Distro {
         "alpine" => Distro::Alpine,
         id if id.starts_with("opensuse") => Distro::OpenSuse,
         _ => {
-            // Fall back through ID_LIKE before giving up
-            if rel.matches("debian") {
-                warn!(id = %rel.id, "Unknown distro; ID_LIKE matched debian");
+            // ID_LIKE fallback chain
+            if rel.matches_id("debian") {
+                warn!(id = %rel.id, "unknown distro matched via ID_LIKE=debian");
                 Distro::Debian
-            } else if rel.matches("ubuntu") {
-                warn!(id = %rel.id, "Unknown distro; ID_LIKE matched ubuntu");
+            } else if rel.matches_id("ubuntu") {
+                warn!(id = %rel.id, "unknown distro matched via ID_LIKE=ubuntu");
                 Distro::Ubuntu
-            } else if rel.matches("arch") {
+            } else if rel.matches_id("arch") {
                 Distro::Arch
-            } else if rel.matches("fedora") || rel.matches("rhel") {
+            } else if rel.matches_id("fedora") || rel.matches_id("rhel") {
                 Distro::Fedora
             } else {
-                warn!(id = %rel.id, "Unrecognised distribution — using generic shadow path");
+                warn!(id = %rel.id, "unrecognised distribution — using generic shadow path");
                 Distro::Unknown(rel.pretty_name.clone())
             }
         }
     }
 }
 
-/// Returns the running kernel version string from `uname -r`.
+/// Returns the running kernel version string via `uname -r`.
 pub fn kernel_version() -> Result<String> {
     let out = std::process::Command::new("uname")
         .arg("-r")
@@ -242,13 +218,13 @@ pub fn kernel_version() -> Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
-/// Returns true when the effective user ID is 0 (root).
+/// Returns `true` when the effective UID is 0 (root).
 pub fn is_root() -> bool {
-    // SAFETY: getuid() is always safe to call
+    // SAFETY: geteuid() is always safe on POSIX systems.
     unsafe { libc::geteuid() == 0 }
 }
 
-// Tests
+// ── Tests ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -257,71 +233,86 @@ mod tests {
     const DEBIAN_12: &str = r#"
 PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
 NAME="Debian GNU/Linux"
-VERSION_ID="12"
 ID=debian
-HOME_URL="https://www.debian.org/"
+VERSION_ID="12"
 "#;
 
     const UBUNTU_24: &str = r#"
 PRETTY_NAME="Ubuntu 24.04 LTS"
 NAME="Ubuntu"
-VERSION_ID="24.04"
 ID=ubuntu
+VERSION_ID="24.04"
 ID_LIKE=debian
 "#;
 
-    const ZAINIUM: &str = r#"
-PRETTY_NAME="Zainium OS 1.0"
-NAME="Zainium OS"
-ID=zainium
-ID_LIKE=debian
+    const ARCH: &str = r#"
+PRETTY_NAME="Arch Linux"
+NAME="Arch Linux"
+ID=arch
 "#;
 
-    const UNKNOWN_DEBIAN_LIKE: &str = r#"
-PRETTY_NAME="MXLinux 23"
-NAME="MXLinux"
+    const FEDORA_40: &str = r#"
+PRETTY_NAME="Fedora Linux 40 (Workstation Edition)"
+NAME="Fedora Linux"
+ID=fedora
+VERSION_ID=40
+"#;
+
+    const MX_LINUX: &str = r#"
+PRETTY_NAME="MX Linux 23"
+NAME="MX Linux"
 ID=mxlinux
 ID_LIKE=debian
 "#;
 
+    const UNKNOWN: &str = r#"
+PRETTY_NAME="CustomOS 1.0"
+NAME="CustomOS"
+ID=customos
+"#;
+
     #[test]
-    fn detects_debian_12() {
-        let rel = OsRelease::parse(DEBIAN_12);
-        assert_eq!(rel.id, "debian");
-        assert_eq!(rel.version_id.as_deref(), Some("12"));
+    fn detects_debian() {
+        assert_eq!(map_to_distro(&OsRelease::parse(DEBIAN_12)), Distro::Debian);
     }
 
     #[test]
-    fn detects_ubuntu_24() {
-        let rel = OsRelease::parse(UBUNTU_24);
-        assert_eq!(rel.id, "ubuntu");
-        assert!(rel.id_like.contains(&"debian".to_string()));
+    fn detects_ubuntu() {
+        assert_eq!(map_to_distro(&OsRelease::parse(UBUNTU_24)), Distro::Ubuntu);
     }
 
     #[test]
-    fn zainium_gets_correct_shadow_path() {
-        let d = map_to_distro(&OsRelease::parse(ZAINIUM));
-        assert_eq!(d, Distro::Zainium);
-        assert_eq!(
-            d.shadow_path(),
-            std::path::PathBuf::from("/.recoil-zainium")
-        );
+    fn detects_arch() {
+        assert_eq!(map_to_distro(&OsRelease::parse(ARCH)), Distro::Arch);
     }
 
     #[test]
-    fn unknown_falls_back_via_id_like() {
-        let d = map_to_distro(&OsRelease::parse(UNKNOWN_DEBIAN_LIKE));
-        assert_eq!(d, Distro::Debian);
+    fn detects_fedora() {
+        assert_eq!(map_to_distro(&OsRelease::parse(FEDORA_40)), Distro::Fedora);
     }
 
     #[test]
-    fn all_shadow_paths_are_absolute_and_prefixed() {
+    fn id_like_fallback_debian() {
+        // MX Linux has ID=mxlinux but ID_LIKE=debian — should fall back.
+        assert_eq!(map_to_distro(&OsRelease::parse(MX_LINUX)), Distro::Debian);
+    }
+
+    #[test]
+    fn unknown_distro_uses_generic_path() {
+        let d = map_to_distro(&OsRelease::parse(UNKNOWN));
+        assert!(matches!(d, Distro::Unknown(_)));
+        assert_eq!(d.shadow_path(), std::path::PathBuf::from("/.recoil-linux"));
+    }
+
+    #[test]
+    fn all_known_shadow_paths_are_dot_prefixed() {
         let distros = [
             Distro::Debian,
             Distro::Ubuntu,
             Distro::Arch,
             Distro::Fedora,
-            Distro::Zainium,
+            Distro::Kali,
+            Distro::Mint,
             Distro::Unknown("TestOS".into()),
         ];
         for d in &distros {

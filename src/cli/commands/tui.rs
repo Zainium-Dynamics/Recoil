@@ -15,13 +15,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod daemon;
-pub mod history;
-pub mod provenance;
-pub mod restore;
-pub mod setup;
-pub mod status;
-pub mod tui;
-pub mod unlock;
-pub mod vault;
-pub mod verify;
+//! Interactive terminal user interface. Full implementation in Milestone 5.
+
+use crate::error::Result;
+use crate::utils::constants::RECOIL_HEADER;
+use clap::Args;
+
+#[derive(Args, Debug)]
+#[command(about = "Interactive terminal user interface. Full implementation in Milestone 5.")]
+pub struct TuiArgs {}
+
+pub async fn run(_args: TuiArgs) -> Result<()> {
+    println!("{}", RECOIL_HEADER);
+    println!();
+    println!("  This command is not yet implemented in this build.");
+    println!("  It will be available in the next release.");
+    Ok(())
+}

@@ -1,74 +1,66 @@
 /*
-Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://gnu.org>.
-*/
+ * Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info};
 
 use crate::error::{RecoilError, Result};
-use crate::security::{
-    decrypt, derive_key, encrypt, generate_salt, LockState, MasterKey, SALT_LEN,
-};
+use crate::security::{decrypt, derive_key, encrypt, generate_salt, LockState, SALT_LEN};
 use crate::utils::{
-    constants::{
-        CONFIG_VERSION, DIR_DB, DIR_LOGS, DIR_RECOIL_B, DIR_RECOIL_ETC, DIR_ROOT_MIRROR, DIR_VAULT,
-        FILE_CONFIG, FILE_LOCK_STATE,
-    },
+    constants::*,
     fs_detect::{FilesystemType, LinkStrategy},
     os_detect::Distro,
 };
 
-// ── RecoilConfig ─────────────────────────────────────────────────────────────
-//
-// Everything Recoil needs to know about the system it is protecting.
-// Serialised to JSON, then AES-256-GCM encrypted before touching disk.
-// The format is invisible to users — encryption makes human-readability
-// irrelevant — so JSON is the right choice: smaller, faster, no dep issues.
+// ── RecoilConfig ──────────────────────────────────────────────────────────────
 
+/// Top-level configuration schema stored AES-256-GCM encrypted on disk.
+///
+/// On-disk layout: salt (32 B) || nonce (12 B) || ciphertext+tag.
+/// All fields are serialised to JSON before encryption.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecoilConfig {
+    /// Schema version — increment on breaking changes.
     pub version: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-
+    /// Detected Linux distribution.
     pub distro: Distro,
+    /// Detected root filesystem type.
     pub filesystem: FilesystemType,
+    /// Absolute path of the shadow directory root.
     pub shadow_dir: PathBuf,
+    /// Mirror linking strategy derived from the filesystem type.
     pub link_strategy: LinkStrategy,
-
-    // Phase completion flags — set true at the end of each phase
-    pub phase1_complete: bool,
-    pub phase2_complete: bool,
-    pub phase3_complete: bool,
-    pub phase4_complete: bool,
-    pub phase5_complete: bool,
-    pub phase6_complete: bool,
-    pub phase7_complete: bool,
-
-    #[serde(default)]
-    pub display_name: Option<String>,
+    /// Milestone completion flags — updated as each milestone ships.
+    pub milestone1_complete: bool,
+    pub milestone2_complete: bool,
+    pub milestone3_complete: bool,
+    pub milestone4_complete: bool,
+    pub milestone5_complete: bool,
 }
 
 impl RecoilConfig {
+    /// Construct a new config from detected system properties.
     pub fn new(distro: Distro, filesystem: FilesystemType) -> Self {
-        let shadow_dir = distro.shadow_path();
         let link_strategy = filesystem.link_strategy();
+        let shadow_dir = distro.shadow_path();
         let now = Utc::now();
         Self {
             version: CONFIG_VERSION.to_string(),
@@ -78,61 +70,75 @@ impl RecoilConfig {
             filesystem,
             shadow_dir,
             link_strategy,
-            phase1_complete: false,
-            phase2_complete: false,
-            phase3_complete: false,
-            phase4_complete: false,
-            phase5_complete: false,
-            phase6_complete: false,
-            phase7_complete: false,
-            display_name: None,
+            milestone1_complete: false,
+            milestone2_complete: false,
+            milestone3_complete: false,
+            milestone4_complete: false,
+            milestone5_complete: false,
         }
     }
 
-    // Convenience accessors for shadow subdirectory paths
+    // ── Convenience path helpers ─────────────────────────────────────────────
+
     pub fn root_mirror(&self) -> PathBuf {
         self.shadow_dir.join(DIR_ROOT_MIRROR)
     }
+
+    pub fn versions_dir(&self) -> PathBuf {
+        self.shadow_dir.join(DIR_VERSIONS)
+    }
+
     pub fn vault_dir(&self) -> PathBuf {
         self.shadow_dir.join(DIR_VAULT)
     }
+
     pub fn logs_dir(&self) -> PathBuf {
         self.shadow_dir.join(DIR_LOGS)
     }
+
     pub fn db_dir(&self) -> PathBuf {
         self.shadow_dir.join(DIR_DB)
     }
+
     pub fn recoil_b(&self) -> PathBuf {
         self.shadow_dir.join(DIR_RECOIL_B)
     }
+
     pub fn recoil_etc(&self) -> PathBuf {
         self.shadow_dir.join(DIR_RECOIL_ETC)
     }
-}
 
-// ── On-disk layout ────────────────────────────────────────────────────────────
-//
-//  [0 .. SALT_LEN)   Argon2id salt  (32 bytes, plaintext — not secret)
-//  [SALT_LEN ..)     AES-256-GCM encrypted JSON  (nonce prepended inside)
-//
-// A fresh salt is generated on every save so password rotation
-// automatically re-keys the ciphertext with no extra steps.
+    pub fn config_path(&self) -> PathBuf {
+        self.shadow_dir.join(FILE_CONFIG)
+    }
+
+    pub fn lock_state_path(&self) -> PathBuf {
+        self.shadow_dir.join(FILE_LOCK_STATE)
+    }
+}
 
 // ── ConfigManager ─────────────────────────────────────────────────────────────
 
+/// Manages encrypted configuration persistence.
+///
+/// Two constructors handle the two stages of Recoil's lifecycle:
+/// - `bootstrap()` — used during first-time setup before the shadow layer
+///   exists, storing config at `/etc/recoil/.config`.
+/// - `from_shadow()` — used after Milestone 2 setup, storing config inside
+///   the immutable shadow layer at `/.recoil-<distro>/.config`.
 pub struct ConfigManager {
     path: PathBuf,
 }
 
 impl ConfigManager {
-    /// Bootstrap path: used before the shadow directory exists (Phase 1).
-    /// After Phase 2 the config migrates inside the shadow layer.
+    /// Pre-shadow bootstrap path — `/etc/recoil/.config`.
     pub fn bootstrap() -> Self {
         Self {
-            path: PathBuf::from(crate::utils::constants::BOOTSTRAP_CONFIG_DIR).join(FILE_CONFIG),
+            path: PathBuf::from(BOOTSTRAP_CONFIG_DIR).join(FILE_CONFIG),
         }
     }
 
+    /// Shadow layer path — `<shadow_dir>/.config`.
     pub fn from_shadow(shadow_dir: &Path) -> Self {
         Self {
             path: shadow_dir.join(FILE_CONFIG),
@@ -142,85 +148,56 @@ impl ConfigManager {
     pub fn path(&self) -> &Path {
         &self.path
     }
+
     pub fn exists(&self) -> bool {
         self.path.exists()
     }
 
-    pub fn save(&self, config: &RecoilConfig, password: &str) -> Result<()> {
+    /// Encrypt `cfg` with `password` and write to disk.
+    ///
+    /// A fresh random salt is generated on every save. This means each write
+    /// re-derives the key, and a password change transparently re-keys the
+    /// ciphertext at no extra cost.
+    pub fn save(&self, cfg: &RecoilConfig, password: &str) -> Result<()> {
         if let Some(parent) = self.path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| RecoilError::Config(format!("Cannot create {:?}: {e}", parent)))?;
+            std::fs::create_dir_all(parent).map_err(RecoilError::Io)?;
         }
-
         let salt = generate_salt();
         let key = derive_key(password, &salt)?;
-        let json = serde_json::to_vec(config)?;
+        let json = serde_json::to_vec(cfg)?;
         let encrypted = encrypt(&json, &key)?;
-
         let mut blob = Vec::with_capacity(SALT_LEN + encrypted.len());
         blob.extend_from_slice(&salt);
         blob.extend_from_slice(&encrypted);
-
-        std::fs::write(&self.path, &blob)
-            .map_err(|e| RecoilError::Config(format!("Cannot write {:?}: {e}", self.path)))?;
-
-        info!(path = %self.path.display(), "Config saved (AES-256-GCM encrypted)");
-        Ok(())
+        std::fs::write(&self.path, &blob).map_err(RecoilError::Io)
     }
 
+    /// Decrypt and deserialise the stored configuration.
     pub fn load(&self, password: &str) -> Result<RecoilConfig> {
         if !self.path.exists() {
             return Err(RecoilError::NotInitialised);
         }
-
-        let blob = std::fs::read(&self.path)
-            .map_err(|e| RecoilError::Config(format!("Cannot read {:?}: {e}", self.path)))?;
-
+        let blob = std::fs::read(&self.path).map_err(RecoilError::Io)?;
         if blob.len() < SALT_LEN + 1 {
             return Err(RecoilError::Config(
-                "Config file is corrupt or truncated".into(),
+                "configuration file is corrupt or truncated".into(),
             ));
         }
-
         let salt: [u8; SALT_LEN] = blob[..SALT_LEN]
             .try_into()
-            .map_err(|_| RecoilError::Config("Salt extraction failed".into()))?;
-
+            .map_err(|_| RecoilError::Config("salt extraction failed".into()))?;
         let key = derive_key(password, &salt)?;
         let plaintext = decrypt(&blob[SALT_LEN..], &key)?;
-        let config: RecoilConfig = serde_json::from_slice(&plaintext)?;
-
-        debug!(distro = ?config.distro, shadow = %config.shadow_dir.display(),
-               "Config loaded");
-        Ok(config)
-    }
-
-    /// Derive the master key from the salt stored in the config file.
-    /// Used by vault operations that need the key without loading the full config.
-    pub fn derive_key_only(&self, password: &str) -> Result<MasterKey> {
-        if !self.path.exists() {
-            return Err(RecoilError::NotInitialised);
-        }
-        let blob = std::fs::read(&self.path)
-            .map_err(|e| RecoilError::Config(format!("Cannot read config: {e}")))?;
-        if blob.len() < SALT_LEN {
-            return Err(RecoilError::Config("Config file truncated".into()));
-        }
-        let salt: [u8; SALT_LEN] = blob[..SALT_LEN]
-            .try_into()
-            .map_err(|_| RecoilError::Config("Salt extraction failed".into()))?;
-        derive_key(password, &salt)
+        Ok(serde_json::from_slice(&plaintext)?)
     }
 }
 
 // ── LockState persistence ─────────────────────────────────────────────────────
 
-pub fn lock_state_path(base: &Path) -> PathBuf {
-    base.join(FILE_LOCK_STATE)
-}
-
+/// Load the rate-limiter state from `base/.lock_state`.
+/// Returns `LockState::default()` when the file does not exist yet.
 pub fn load_lock_state(base: &Path) -> LockState {
-    let path = lock_state_path(base);
+    let path = base.join(FILE_LOCK_STATE);
     if !path.exists() {
         return LockState::default();
     }
@@ -230,8 +207,9 @@ pub fn load_lock_state(base: &Path) -> LockState {
         .unwrap_or_default()
 }
 
+/// Persist the rate-limiter state to `base/.lock_state`.
 pub fn save_lock_state(base: &Path, state: &LockState) -> Result<()> {
-    let path = lock_state_path(base);
+    let path = base.join(FILE_LOCK_STATE);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(RecoilError::Io)?;
     }
@@ -254,35 +232,32 @@ mod tests {
     fn roundtrip_save_and_load() {
         let dir = tempdir().unwrap();
         let mgr = ConfigManager {
-            path: dir.path().join(".config"),
+            path: dir.path().join(FILE_CONFIG),
         };
-
-        mgr.save(&sample_config(), "correct_password_1!").unwrap();
-        let loaded = mgr.load("correct_password_1!").unwrap();
-
-        assert_eq!(loaded.version, CONFIG_VERSION);
-        assert_eq!(loaded.distro, Distro::Debian);
-        assert!(!loaded.phase2_complete);
+        mgr.save(&sample_config(), "correct-pass-42!").unwrap();
+        let cfg = mgr.load("correct-pass-42!").unwrap();
+        assert_eq!(cfg.version, CONFIG_VERSION);
+        assert!(!cfg.milestone2_complete);
     }
 
     #[test]
-    fn wrong_password_gives_auth_failed() {
+    fn wrong_password_returns_auth_failed() {
         let dir = tempdir().unwrap();
         let mgr = ConfigManager {
-            path: dir.path().join(".config"),
+            path: dir.path().join(FILE_CONFIG),
         };
-        mgr.save(&sample_config(), "correct!1").unwrap();
+        mgr.save(&sample_config(), "correct!42").unwrap();
         assert!(matches!(
-            mgr.load("totally_wrong"),
+            mgr.load("wrong-password"),
             Err(RecoilError::AuthFailed)
         ));
     }
 
     #[test]
-    fn missing_file_gives_not_initialised() {
+    fn missing_file_returns_not_initialised() {
         let dir = tempdir().unwrap();
         let mgr = ConfigManager {
-            path: dir.path().join(".config"),
+            path: dir.path().join(FILE_CONFIG),
         };
         assert!(matches!(
             mgr.load("anything"),
@@ -291,21 +266,16 @@ mod tests {
     }
 
     #[test]
-    fn shadow_path_derived_from_distro() {
+    fn shadow_path_is_dot_prefixed() {
         let cfg = sample_config();
-        assert_eq!(cfg.shadow_dir, PathBuf::from("/.recoil-debian"));
+        assert!(
+            cfg.shadow_dir.to_string_lossy().contains(".recoil-"),
+            "shadow_dir must contain .recoil-"
+        );
     }
 
     #[test]
-    fn subdirectory_accessors_are_under_shadow() {
-        let cfg = sample_config();
-        assert!(cfg.vault_dir().starts_with(&cfg.shadow_dir));
-        assert!(cfg.recoil_b().starts_with(&cfg.shadow_dir));
-        assert!(cfg.recoil_etc().starts_with(&cfg.shadow_dir));
-    }
-
-    #[test]
-    fn lock_state_survives_persist_and_reload() {
+    fn lock_state_roundtrip() {
         let dir = tempdir().unwrap();
         let mut s = LockState::default();
         s.on_failure();

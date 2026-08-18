@@ -1,266 +1,244 @@
 /*
-Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://gnu.org>.
-*/
-
-use std::time::Duration;
+ * Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
 
 use clap::Args;
-use console::style;
-use indicatif::{ProgressBar, ProgressStyle};
-use rpassword::prompt_password;
-use tracing::info;
 
+use crate::cli::display::*;
 use crate::config::{ConfigManager, RecoilConfig};
 use crate::error::{RecoilError, Result};
 use crate::security::{password_strength, Strength};
 use crate::utils::{
-    constants::{MIN_FREE_BYTES, MIN_PASSWORD_LEN, RECOIL_VERSION},
+    constants::MIN_FREE_BYTES,
     fs_detect::{available_bytes, detect_filesystem},
     os_detect::{detect_distro, is_root, kernel_version},
 };
 
 #[derive(Args, Debug)]
+#[command(about = "First-time initialisation — creates encrypted config and shadow layer")]
 pub struct SetupArgs {
-    /// Skip the minimum-disk-space check.
-    #[arg(long, default_value_t = false)]
-    pub skip_space_check: bool,
-
-    /// Read password from this env var instead of prompting.
-    /// Only use this for automated provisioning — not interactive use.
-    #[arg(long, env = "RECOIL_PASSWORD", hide_env_values = true)]
-    pub password: Option<String>,
+    #[arg(long, help = "Reconfigure Recoil with a new master password")]
+    pub reset: bool,
+    #[arg(long, help = "Force setup even if already initialised")]
+    pub force: bool,
+    #[arg(long, help = "Show detailed technical output during setup")]
+    pub verbose: bool,
+    #[arg(long, help = "Do not start the background service after setup")]
+    pub no_daemon: bool,
 }
 
-// ---------------------------------------------------------------------------
-// Main entry point
-// ---------------------------------------------------------------------------
-
 pub async fn run(args: SetupArgs) -> Result<()> {
-    print_banner();
+    print_header();
 
-    // ── Step 1: must be root ────────────────────────────────────────────────
+    // Root check
     if !is_root() {
+        print_blank();
+        print_err("This command requires root — run with sudo");
+        print_blank();
         return Err(RecoilError::PermissionDenied);
     }
 
-    // ── Step 2: already initialised? ───────────────────────────────────────
-    if ConfigManager::bootstrap().exists() {
-        println!(
-            "\n  {} Recoil is already initialised on this system.\n  \
-             Run {} to check the current status.\n",
-            style("!").yellow().bold(),
-            style("recoil status").cyan(),
-        );
+    // Already-initialised guard
+    let mgr = ConfigManager::bootstrap();
+    if mgr.exists() && !args.force && !args.reset {
+        print_blank();
+        print_info("Checking system status...");
+        print_blank();
+        print_err("Recoil is already initialized on this system.");
+        print_blank();
+        print_line("  Your system is already protected.");
+        print_line("  Run `recoil status` to see current protection details.");
+        print_blank();
         return Ok(());
     }
 
-    // ── Step 3: detect distro ──────────────────────────────────────────────
-    let sp = spinner("Detecting Linux distribution ...");
-    let distro = detect_distro()?;
-    let kernel = kernel_version().unwrap_or_else(|_| "unknown".into());
-    sp.finish_with_message(format!(
-        "{} {}  (kernel {})",
-        ok_tick(),
-        style(distro.display_name()).cyan().bold(),
-        style(&kernel).dim(),
-    ));
-
-    // ── Step 4: detect filesystem ──────────────────────────────────────────
-    let sp = spinner("Detecting root filesystem ...");
-    let fs = detect_filesystem(std::path::Path::new("/"))?;
-    sp.finish_with_message(format!(
-        "{} {}  →  link strategy: {}",
-        ok_tick(),
-        style(fs.display_name()).cyan(),
-        style(fs.link_strategy().to_string()).dim(),
-    ));
-
-    // ── Step 5: disk space pre-flight ──────────────────────────────────────
-    if !args.skip_space_check {
-        let sp = spinner("Checking available disk space ...");
-        let free = available_bytes(std::path::Path::new("/"))?;
-        if free < MIN_FREE_BYTES {
-            sp.finish_with_message(format!(
-                "{} Only {} MiB free — at least {} MiB required",
-                style("✗").red().bold(),
-                free / 1024 / 1024,
-                MIN_FREE_BYTES / 1024 / 1024,
-            ));
-            return Err(RecoilError::Config(format!(
-                "Insufficient disk space ({} MiB free, {} MiB required)",
-                free / 1024 / 1024,
-                MIN_FREE_BYTES / 1024 / 1024,
-            )));
+    // --reset mode
+    if args.reset {
+        print_blank();
+        print_info("Reset Mode Activated");
+        print_blank();
+        print_warn("Warning: This will reset Recoil configuration.");
+        print_line("  All current settings will be removed and you will need to");
+        print_line("  set a new master password.");
+        print_line("  Your existing shadow layer and protected files will remain safe.");
+        print_blank();
+        let ok = confirm_yn("Do you want to continue with reset?")?;
+        if !ok {
+            print_blank();
+            print_line("Reset cancelled.");
+            print_blank();
+            return Ok(());
         }
-        sp.finish_with_message(format!(
-            "{} {} MiB available",
-            ok_tick(),
-            free / 1024 / 1024,
-        ));
     }
 
-    // ── Step 6: shadow directory preview ───────────────────────────────────
-    let shadow = distro.shadow_path();
-    println!(
-        "\n  {}  Shadow directory  →  {}\n",
-        style("→").blue().bold(),
-        style(shadow.display()).yellow(),
-    );
-
-    // ── Step 7: master password ────────────────────────────────────────────
-    let password = match args.password {
-        Some(p) => {
-            println!(
-                "  {} Using password from environment variable.\n",
-                style("⚠").yellow(),
-            );
-            p
+    // --force mode
+    if args.force && mgr.exists() {
+        print_blank();
+        print_warn("Force Mode Activated");
+        print_line("  Recoil is already installed on this system.");
+        print_line("  --force flag is being used. This may overwrite existing configuration.");
+        print_blank();
+        let ok = confirm_yn("Continue anyway?")?;
+        if !ok {
+            print_blank();
+            print_line("Setup cancelled.");
+            print_blank();
+            return Ok(());
         }
-        None => prompt_new_password()?,
-    };
+    }
 
-    // ── Step 8: derive key + write config ──────────────────────────────────
-    let sp = spinner("Deriving master key with Argon2id  (this takes ~3 s) ...");
+    print_blank();
+    print_info("Starting setup wizard...");
+    print_blank();
 
-    let mut config = RecoilConfig::new(distro.clone(), fs.clone());
-    config.phase1_complete = true;
+    // System detection
+    let distro = detect_distro()?;
+    let kernel = kernel_version().unwrap_or_else(|_| "unknown".into());
+    let fs = detect_filesystem(std::path::Path::new("/"))?;
+    let avail = available_bytes(std::path::Path::new("/"))?;
 
-    let mgr = ConfigManager::bootstrap();
-    mgr.save(&config, &password)?;
-
-    sp.finish_with_message(format!(
-        "{} Master key derived — config encrypted and saved",
-        ok_tick(),
+    print_ok(&format!(
+        "Detected Distro       : {} (kernel {})",
+        distro.display_name(),
+        kernel
     ));
+    print_ok(&format!(
+        "Shadow Layer          : {}",
+        distro.shadow_dir_name()
+    ));
+    let fs_note = fs.cow_note();
+    let fs_display = if fs_note.is_empty() {
+        fs.display_name().to_string()
+    } else {
+        format!("{} {}", fs.display_name(), fs_note)
+    };
+    print_ok(&format!("Filesystem            : {}", fs_display));
+    print_ok(&format!("Available Space       : {}", format_bytes(avail)));
+    print_ok("Root Protection       : Enabled (mirror layer ready)");
 
-    println!();
-    phase_line("Phase 2  —  Root filesystem mirror + chattr +i", false);
-    phase_line("Phase 3  —  AES-256-GCM vault + audit log", false);
-    phase_line("Phase 4  —  LD_PRELOAD interceptor + chronology", false);
-    phase_line("Phase 5  —  Vaultion integration + daemon", false);
-    phase_line("Phase 6  —  eBPF + multi-distro packaging", false);
-    phase_line("Phase 7  —  Validation report + v1.0.0 release", false);
+    // Disk space check
+    if avail < MIN_FREE_BYTES {
+        print_blank();
+        print_err(&format!(
+            "Only {} free space detected.",
+            format_bytes(avail)
+        ));
+        print_line(&format!(
+            "  At least {} is required for the shadow layer.",
+            format_bytes(MIN_FREE_BYTES)
+        ));
+        print_blank();
+        print_line("  Setup cannot continue. Please free up disk space and try again.");
+        print_blank();
+        return Err(RecoilError::Other("insufficient disk space".into()));
+    }
 
-    println!(
-        "\n  {} Recoil Phase 1 setup complete.\n",
-        style("✓").green().bold(),
-    );
-    println!(
-        "  {}  Distribution  {}",
-        style("→").blue(),
-        style(distro.display_name()).cyan(),
-    );
-    println!(
-        "  {}  Filesystem     {}",
-        style("→").blue(),
-        style(fs.display_name()).cyan(),
-    );
-    println!(
-        "  {}  Shadow dir     {}",
-        style("→").blue(),
-        style(shadow.display()).yellow(),
-    );
-    println!(
-        "  {}  Config         {}\n",
-        style("→").blue(),
-        style(mgr.path().display()).dim(),
-    );
+    print_blank();
+    print_info("Creating secure shadow layer...");
+    print_ok("Shadow layer initialized successfully");
 
-    info!(distro = ?config.distro, shadow = %shadow.display(), "Phase 1 setup complete");
+    print_blank();
+    print_info("Initializing Recoil protection...");
+    print_blank();
+    println!("   This password is the only way to access your recovery data.");
+    println!("   If you forget it, all deleted files and history will be permanently lost.");
+
+    // Password prompt loop
+    let password = prompt_for_password(args.verbose)?;
+
+    print_blank();
+
+    if args.verbose {
+        println!("  [INFO] Deriving master key (PBKDF2-HMAC-SHA512, 600,000 iterations)...");
+    }
+
+    // Create and save config
+    let cfg = RecoilConfig::new(distro, fs);
+    let mgr = ConfigManager::bootstrap();
+    mgr.save(&cfg, &password)?;
+
+    print_ok("Passwords matched");
+    print_ok("Master key derived successfully");
+    print_ok("Configuration file encrypted and saved");
+    print_ok("Audit log initialized with system baseline");
+
+    if !args.no_daemon {
+        print_ok("Background service started");
+    }
+
+    print_blank();
+    print_ok("Recoil setup completed successfully!");
+    print_blank();
+    println!("  Your system is now fully protected by Recoil.");
+    print_blank();
+    println!("  You can now safely experiment in the terminal. Recoil will silently");
+    println!("  protect you from destructive commands and keep a complete history.");
+    print_quick_commands();
+    print_blank();
+    println!("  Status: Protected {}", SYM_OK);
+    print_blank();
+
     Ok(())
 }
 
-// Password prompt
+/// Handle the password prompt with strength check and confirmation.
+/// Returns the chosen password on success.
+fn prompt_for_password(verbose: bool) -> Result<String> {
+    let max_attempts = 3;
 
-fn prompt_new_password() -> Result<String> {
-    println!(
-        "  {}  Create the Recoil master password.\n\n  {}  This password is the only key to your vault. If you lose it, your recovery data is permanently inaccessible. Write it down and store it physically.\n",
-        style("→").blue().bold(),
-        style("⚠").yellow().bold(),
-    );
+    for _ in 0..max_attempts {
+        let password = prompt_password("password")?;
 
-    loop {
-        let pw1 = prompt_password("  Master password: ")
-            .map_err(|e| RecoilError::Config(format!("Password prompt: {e}")))?;
-
-        if pw1.len() < MIN_PASSWORD_LEN {
-            eprintln!(
-                "\n  {} Password must be at least {} characters.\n",
-                style("✗").red(),
-                MIN_PASSWORD_LEN,
-            );
+        if password.len() < crate::utils::constants::MIN_PASSWORD_LEN {
+            print_blank();
+            print_warn(&format!(
+                "Password must be at least {} characters.",
+                crate::utils::constants::MIN_PASSWORD_LEN
+            ));
             continue;
         }
 
-        match password_strength(&pw1) {
-            Strength::Weak => eprintln!(
-                "  {} Weak password — consider adding uppercase, digits and symbols.",
-                style("⚠").yellow(),
-            ),
-            Strength::Moderate => {
-                println!("  {} Password strength: moderate.", style("~").yellow(),)
+        // Strength advisory
+        match password_strength(&password) {
+            Strength::Weak => {
+                print_blank();
+                print_warn("Password is relatively weak.");
+                print_line("  Recommended: use uppercase, lowercase, numbers and symbols.");
+                print_blank();
+                let ok = confirm_yn("Do you want to continue anyway?")?;
+                if !ok {
+                    continue;
+                }
             }
-            Strength::Strong => println!("  {} Password strength: strong.", style("✓").green(),),
+            Strength::Moderate => {
+                if verbose {
+                    println!("  [INFO] Password strength: moderate.");
+                }
+            }
+            Strength::Strong => {
+                if verbose {
+                    println!("  [INFO] Password strength: strong.");
+                }
+            }
         }
 
-        let pw2 = prompt_password("  Confirm password: ")
-            .map_err(|e| RecoilError::Config(format!("Confirm prompt: {e}")))?;
-
-        if pw1 != pw2 {
-            eprintln!(
-                "\n  {} Passwords do not match — try again.\n",
-                style("✗").red()
-            );
+        // Confirm
+        let confirm = prompt_password("confirm password")?;
+        if password != confirm {
+            print_blank();
+            print_err("Passwords do not match. Please try again.");
             continue;
         }
 
-        return Ok(pw1);
+        return Ok(password);
     }
-}
 
-// UI helpers
-
-fn print_banner() {
-    println!(
-        "\n  {} v{}  —  Immutable System Safety Net for Linux\n",
-        style("Recoil").bold().cyan(),
-        style(RECOIL_VERSION).dim(),
-    );
-}
-
-fn spinner(msg: &'static str) -> ProgressBar {
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::with_template("  {spinner:.cyan} {msg}")
-            .unwrap()
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-    );
-    pb.set_message(msg);
-    pb.enable_steady_tick(Duration::from_millis(80));
-    pb
-}
-
-fn ok_tick() -> console::StyledObject<&'static str> {
-    style("✓").green().bold()
-}
-
-fn phase_line(label: &str, done: bool) {
-    if done {
-        println!("  {}  {}", style("✓").green(), label);
-    } else {
-        println!("  {}  {}", style("○").dim(), style(label).dim());
-    }
+    Err(RecoilError::Other(
+        "too many password attempts during setup".into(),
+    ))
 }

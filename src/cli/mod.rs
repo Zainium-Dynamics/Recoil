@@ -1,47 +1,24 @@
 /*
-Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
+ * Copyright (C) 2026 Ali Zain <alizain.arch@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://gnu.org>.
-*/
-
+pub mod auth;
 pub mod commands;
-
-use clap::{Parser, Subcommand};
+pub mod display;
 
 use crate::error::Result;
-use commands::{
-    setup::SetupArgs, ConfigArgs, DaemonArgs, HistoryArgs, ProvenanceArgs, RestoreArgs, StatusArgs,
-    TuiArgs, VaultArgs,
-};
-
-// ---------------------------------------------------------------------------
-// Top-level CLI definition
-// ---------------------------------------------------------------------------
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(
-    name    = "recoil",
-    version = env!("CARGO_PKG_VERSION"),
-    about   = "Immutable system safety net and chronology engine for Linux",
-    long_about = "\
-Recoil protects Linux systems from permanent data loss caused by accidental\n\
-or destructive terminal commands.  It mirrors the entire root filesystem\n\
-into a cryptographically sealed, kernel-immutable shadow layer and maintains\n\
-a forensic-quality record of every significant system change.\n\n\
-First run:   sudo recoil setup\n\
-Check status: recoil status",
-    arg_required_else_help = true,
+    name = "recoil",
+    version = "1.0.0",
+    about = "Immutable System Safety Net for Linux"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -50,48 +27,40 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Initialise Recoil on this system (requires root).
-    Setup(SetupArgs),
-
-    /// Show protection status and phase completion.
-    Status(StatusArgs),
-
-    /// Restore a file, directory, or the full system from the vault.
-    Restore(RestoreArgs),
-
-    /// Browse and search the system chronology.
-    History(HistoryArgs),
-
-    /// Manage the integrated Vaultion encrypted vault.
-    Vault(VaultArgs),
-
-    /// Control the Recoil background daemon.
-    Daemon(DaemonArgs),
-
-    /// View or change Recoil configuration.
-    Config(ConfigArgs),
-
-    /// Show the complete lifecycle provenance of a file or binary.
-    Provenance(ProvenanceArgs),
-
-    /// Open the interactive terminal UI.
-    Tui(TuiArgs),
+    /// First-time initialisation — creates shadow layer and root mirror
+    Setup(commands::setup::SetupArgs),
+    /// Show system protection status
+    Status(commands::status::StatusArgs),
+    /// View and search the complete system chronology
+    History(commands::history::HistoryArgs),
+    /// Restore files or directories from vault or root mirror
+    Restore(commands::restore::RestoreArgs),
+    /// Shadow layer structural integrity verification
+    Verify(commands::verify::VerifyArgs),
+    /// Authenticated shadow layer unlock (chattr -i)
+    Unlock(commands::unlock::UnlockArgs),
+    /// Show the complete lifecycle record for any file or binary
+    Provenance(commands::provenance::ProvenanceArgs),
+    /// Per-file AES-256-GCM vault operations
+    Vault(commands::vault::VaultArgs),
+    /// Background daemon management
+    Daemon(commands::daemon::DaemonArgs),
+    /// Interactive terminal user interface
+    Tui(commands::tui::TuiArgs),
 }
 
-// ---------------------------------------------------------------------------
-// Dispatch
-// ---------------------------------------------------------------------------
-
-pub async fn dispatch(cli: Cli) -> Result<()> {
+pub async fn run() -> Result<()> {
+    let cli = Cli::parse();
     match cli.command {
         Command::Setup(a) => commands::setup::run(a).await,
-        Command::Status(a) => commands::status(a).await,
-        Command::Restore(a) => commands::restore(a).await,
-        Command::History(a) => commands::history(a).await,
-        Command::Vault(a) => commands::vault(a).await,
-        Command::Daemon(a) => commands::daemon(a).await,
-        Command::Config(a) => commands::config_cmd(a).await,
-        Command::Provenance(a) => commands::provenance(a).await,
-        Command::Tui(a) => commands::tui(a).await,
+        Command::Status(a) => commands::status::run(a).await,
+        Command::History(a) => commands::history::run(a).await,
+        Command::Restore(a) => commands::restore::run(a).await,
+        Command::Verify(a) => commands::verify::run(a).await,
+        Command::Unlock(a) => commands::unlock::run(a).await,
+        Command::Provenance(a) => commands::provenance::run(a).await,
+        Command::Vault(a) => commands::vault::run(a).await,
+        Command::Daemon(a) => commands::daemon::run(a).await,
+        Command::Tui(a) => commands::tui::run(a).await,
     }
 }

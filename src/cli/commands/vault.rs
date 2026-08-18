@@ -15,13 +15,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod daemon;
-pub mod history;
-pub mod provenance;
-pub mod restore;
-pub mod setup;
-pub mod status;
-pub mod tui;
-pub mod unlock;
-pub mod vault;
-pub mod verify;
+//! Per-file AES-256-GCM vault operations. Full implementation in Milestone 3.
+
+use crate::error::Result;
+use crate::utils::constants::RECOIL_HEADER;
+use clap::Args;
+
+#[derive(Args, Debug)]
+#[command(about = "Per-file AES-256-GCM vault operations. Full implementation in Milestone 3.")]
+pub struct VaultArgs {}
+
+pub async fn run(_args: VaultArgs) -> Result<()> {
+    println!("{}", RECOIL_HEADER);
+    println!();
+    println!("  This command is not yet implemented in this build.");
+    println!("  It will be available in the next release.");
+    Ok(())
+}

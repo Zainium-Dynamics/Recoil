@@ -1,6 +1,6 @@
 [package]
 name        = "recoil"
-version     = "0.1.0"
+version     = "1.0.0"
 edition     = "2021"
 authors     = ["Ali Zain <alizain.arch@gmail.com>"]
 description = "Immutable Root Filesystem Mirror, Atomic Rollback Engine, Hybrid Kernel Interception and Cryptographic Provenance Tracking for Linux and Redox OS"
@@ -13,6 +13,14 @@ categories  = ["command-line-utilities", "os"]
 name = "recoil"
 path = "src/main.rs"
 
+# ---------------------------------------------------------------------------
+# All versions exact-pinned with = syntax.
+# Reason: argon2 0.5.x pulls base64ct 1.8.x which requires edition=2024,
+# incompatible with Rust 1.75. Exact pinning prevents silent breakage.
+# No crate in the full transitive tree may use edition = "2024".
+# ---------------------------------------------------------------------------
+
+[dependencies]
 
 # CLI
 clap      = { version = "=4.3.24", features = ["derive", "env", "color", "wrap_help"] }

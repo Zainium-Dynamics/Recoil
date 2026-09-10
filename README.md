@@ -173,33 +173,6 @@ sudo ./target/release/recoil setup
 
 ---
 
-## Supported Distributions
-
-| Distribution | Shadow Directory | Status |
-|---|---|---|
-| Debian GNU/Linux | `/.recoil-debian/` | Supported |
-| Ubuntu | `/.recoil-ubuntu/` | Supported |
-| Arch Linux | `/.recoil-arch/` | Supported |
-| Fedora Linux | `/.recoil-fedora/` | Supported |
-| Linux Mint | `/.recoil-mint/` | Supported |
-| Kali Linux | `/.recoil-kali/` | Supported |
-| Parrot OS | `/.recoil-parrot/` | Supported |
-| openSUSE | `/.recoil-opensuse/` | Supported |
-| AlmaLinux | `/.recoil-alma/` | Supported |
-| Rocky Linux | `/.recoil-rocky/` | Supported |
-| Pop!_OS | `/.recoil-pop/` | Supported |
-| elementary OS | `/.recoil-elementary/` | Supported |
-| Manjaro | `/.recoil-manjaro/` | Supported |
-| Void Linux | `/.recoil-void/` | Supported |
-| Alpine Linux | `/.recoil-alpine/` | Supported |
-| Gentoo | `/.recoil-gentoo/` | Supported |
-| CentOS | `/.recoil-centos/` | Supported |
-| RHEL | `/.recoil-rhel/` | Supported |
-| Derivative distros | `/.recoil-<base>/` | Via ID_LIKE fallback |
-| Unknown | `/.recoil-linux/` | Generic fallback |
-
----
-
 ## Development Status
 
 | Milestone | Focus | Status |
